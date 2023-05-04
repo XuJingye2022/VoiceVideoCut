@@ -1,0 +1,15 @@
+[outputsettings]                      # 横屏
+fps = 60
+resolution_w = 2560
+resolution_h = 1440
+resolution_width_preview = 360
+resolution_height_preview = 240
+
+[Gam.speed]
+speedx = 4                              # 不讲话部分几倍速
+
+
+[supportedFormat]
+video = [".mp4", ".MP4"]
+picture = [".jpg", ".png", "jpeg", ".JPG", ".PNG", "JPEG", ".GIF", ".gif"]
+

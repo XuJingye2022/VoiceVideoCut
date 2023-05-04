@@ -1,0 +1,5 @@
+numpy
+pandas
+moviepy
+PyQt5
+pydub
