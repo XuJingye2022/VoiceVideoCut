@@ -1,7 +1,7 @@
 [outputsettings]                      # 横屏
 fps = 60
-resolution_w = 2560
-resolution_h = 1440
+resolution_w = 1920
+resolution_h = 1080
 resolution_width_preview = 360
 resolution_height_preview = 240
 
