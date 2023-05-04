@@ -354,12 +354,12 @@ class CutRange(QMainWindow):
         t_ranges = []
         for i in range(len(self.data_dict)):
             if self.data_dict[i][0].isChecked():
-                t1 = round(float(self.data_dict[i][4].text()),3) - PRE_T_INTER
-                t2 = round(float(self.data_dict[i][7].text()),3) + AFT_T_INTER
+                t1 = round(float(self.data_dict[i][4].text()),3)
+                t2 = round(float(self.data_dict[i][7].text()),3)
                 t_ranges.append((t1, t2))
             elif self.data_dict[i][1].isChecked():
-                t1 = round(float(self.data_dict[i][4].text()),3) - PRE_T_CHAT
-                t2 = round(float(self.data_dict[i][7].text()),3) + AFT_T_CHAT
+                t1 = round(float(self.data_dict[i][4].text()),3)
+                t2 = round(float(self.data_dict[i][7].text()),3)
                 t_ranges.append((t1, t2))
             elif self.data_dict[i][2].isChecked():
                 continue
