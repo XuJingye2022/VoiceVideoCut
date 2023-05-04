@@ -2,6 +2,13 @@
 这个程序是用来剪辑双音轨的语音视频的. 适合录制无特效的**视频教程**、**游戏录屏**、**反应视频**.
 This progam is used to cut speech in a dual track video, suitable for **video tutorials**, **game screen recording** and **reaction video**.
 
+# What does this program do?
+通过人声音轨, 找到连续的人声范围. 
+然后每个范围都可以在编辑界面中循环播放. 
+因为有的时候你是对屏幕中某个画面做出反应, 你需要扩展这个范围.
+于是你得到了一些需要剪辑的视频范围. 
+然后你有两个导出方式: 1. 删除其它范围, 2. 加速其它范围.
+
 # How to use it?
 1. 下载整个程序. Download all this program.
 2. 安装K-Lite Codec Pack给装了. Install [K-Lite Codec Pack](http://www.codecguide.com/download_k-lite_codec_pack_standard.htm).

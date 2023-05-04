@@ -14,12 +14,8 @@ from GamMicroTrack import Gam
 from GamMicroTrack import combine_ranges
 from small_tools.filemani import get_all_suffixs_files
 
-SPEEDX = 4
+
 THREADS = 5
-PRE_T_CHAT = 0
-AFT_T_CHAT = 0
-PRE_T_INTER = 12
-AFT_T_INTER = 0
 SETTINGS = toml.load("./settings.toml")
 
 class ThreadCut(QThread):
