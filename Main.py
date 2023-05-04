@@ -203,7 +203,7 @@ class CutRange(QMainWindow):
         if len(self.data_dict)==0:
             for i in range(10):
                 buttongroup = QButtonGroup(self)
-                radiobutton0 = QRadioButton(f"Inter", self.scroll_widget); buttongroup.addButton(radiobutton0)
+                radiobutton0 = QRadioButton(f"Trans", self.scroll_widget); buttongroup.addButton(radiobutton0)
                 radiobutton0.setEnabled(False)  # 这个按钮暂时不需要
                 radiobutton1 = QRadioButton(f"Chat", self.scroll_widget); buttongroup.addButton(radiobutton1)
                 radiobutton2 = QRadioButton(f"Noise", self.scroll_widget); buttongroup.addButton(radiobutton2)
@@ -240,7 +240,7 @@ class CutRange(QMainWindow):
         else:
             for i in range(0, len(self.data_dict)):
                 buttongroup = QButtonGroup(self)
-                radiobutton0 = QRadioButton(f"Inter", self.scroll_widget); buttongroup.addButton(radiobutton0)
+                radiobutton0 = QRadioButton(f"Trans", self.scroll_widget); buttongroup.addButton(radiobutton0)
                 radiobutton0.setEnabled(False)  # 这个按钮暂时不需要
                 radiobutton1 = QRadioButton(f"Chat", self.scroll_widget); buttongroup.addButton(radiobutton1)
                 radiobutton2 = QRadioButton(f"Noise", self.scroll_widget); buttongroup.addButton(radiobutton2)
