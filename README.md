@@ -29,3 +29,4 @@ This progam is used to cut speech in a dual track video, suitable for **video tu
 # Some Problem
 - 所有过程都是单线程, 尤其是导出视频时, 千万不能动主窗口.
 - 代码可读性差了点.
+- 用的时候小心点.
