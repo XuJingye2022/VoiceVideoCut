@@ -386,7 +386,7 @@ class CutRange(QMainWindow):
         path_initial_cut_range = os.path.join(self.root, "SpeechRange.csv")
         if not os.path.exists(path_initial_cut_range):
             game = Gam(path_initial_cut_range, THREADS, SETTINGS)
-            game.get_time_set_to_cut()
+            game.get_time_set_to_cut(self.root)
         self.load_cut_range_from_file()
 
 
