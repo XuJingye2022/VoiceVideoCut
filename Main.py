@@ -6,7 +6,7 @@ from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, \
     QFileDialog, QPushButton, QScrollArea, QLineEdit, QWidget, \
     QPushButton, QDoubleSpinBox, QProgressBar, QRadioButton, QButtonGroup, \
-    QMessageBox
+    QMessageBox, QHBoxLayout
 from small_tools.pic_video_attribution import get_size, get_duration
 import pandas as pd
 import toml
@@ -57,6 +57,8 @@ class CutRange(QMainWindow):
         self.button_h = 30
         self.window_w = self.video_w + self.scroll_area_w + 30
         self.window_h = self.video_h + self.button_h + 30
+        self.mode_w = int(floor(self.scroll_area_w/3))
+        self.mode_h = 20
         # Something will used
         self.root = ""
         self.data_dict = dict()
@@ -73,8 +75,8 @@ class CutRange(QMainWindow):
         self.media_player.setVideoOutput(self.video_widget)
         self.video_widget.setGeometry(10, 10, self.video_w, self.video_h)
         # Timer For Video
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.loop_video)
+        self.mode_timer = QTimer()
+        self.mode_timer.timeout.connect(self.video_loop_mode)
         # Range For Video Playing
         self.tL = 0
         self.tR = 0
@@ -125,8 +127,27 @@ class CutRange(QMainWindow):
 
         # ============== Display Cut Range ==============
         self.scroll_area = QScrollArea(self)
-        self.scroll_area.setGeometry(self.video_w+20, 10, self.scroll_area_w, 10+self.video_h+self.button_h)
+        self.scroll_area.setGeometry(self.video_w+20, 20+self.mode_h, self.scroll_area_w, self.video_h+self.button_h - self.mode_h)
         self.plot_cut_range()
+
+        # ============== Select Mode ===============
+        mode_layout = QHBoxLayout()
+        buttongroup = QButtonGroup(self)
+        self.mode0 = QRadioButton(f"Loop", self)
+        self.mode0.setChecked(True)
+        self.mode1 = QRadioButton(f"All", self)
+        self.mode2 = QRadioButton(f"Preview", self)
+        self.mode0.setGeometry(self.video_w+20,               10, self.mode_w, self.mode_h)
+        self.mode1.setGeometry(self.video_w+30+self.mode_w,   10, self.mode_w, self.mode_h)
+        self.mode2.setGeometry(self.video_w+40+2*self.mode_w, 10, self.mode_w, self.mode_h)
+        mode_layout.addWidget(self.mode0)
+        mode_layout.addWidget(self.mode1)
+        buttongroup.addButton(self.mode0)
+        buttongroup.addButton(self.mode1)
+        buttongroup.addButton(self.mode2)
+        main_layout = QHBoxLayout()
+        main_layout.addLayout(mode_layout)
+        self.setLayout(main_layout)
 
     def open_video_file(self):
         file_dialog = QFileDialog(self)
@@ -143,7 +164,7 @@ class CutRange(QMainWindow):
             self.media_player.setMedia(media_content)
             self.media_player.positionChanged.connect(self.update_progress_bar)
             self.media_player.play()
-            self.timer.start(10)
+            self.mode_timer.start(10)
 
     def load_speech_range_from_file(self):
         speech_range_data = os.path.join(self.root, "SpeechRange.csv")
@@ -173,8 +194,8 @@ class CutRange(QMainWindow):
                 radiobutton0.setEnabled(False)  # 这个按钮暂时不需要
                 radiobutton1 = QRadioButton(f"Chat", self.scroll_widget); buttongroup.addButton(radiobutton1)
                 radiobutton2 = QRadioButton(f"Noise", self.scroll_widget); buttongroup.addButton(radiobutton2)
-                line_edit0 = QLineEdit(str(round(df.iloc[(i-1)//2, 0],3)), self.scroll_widget)
-                line_edit1 = QLineEdit(str(round(df.iloc[(i-1)//2, 1],3)), self.scroll_widget)
+                line_edit0 = QLineEdit(str(round(df.iloc[(i-1)//2, 0],2)), self.scroll_widget)
+                line_edit1 = QLineEdit(str(round(df.iloc[(i-1)//2, 1],2)), self.scroll_widget)
                 line_edit0.setFixedWidth(80)
                 line_edit1.setFixedWidth(80)
                 radiobutton1.setChecked(True)
@@ -230,13 +251,43 @@ class CutRange(QMainWindow):
             progress = int(round(self.media_player.position() / self.duration))
             self.progress_bar.setValue(progress)
 
-    def loop_video(self):
+    def video_loop_mode(self):
         position = self.media_player.position()
         cond1 = position > self.tR*1000
         cond2 = position < self.tL*1000
-        if cond1 or cond2:
+        if self.mode0.isChecked() and (cond1 or cond2):
             self.media_player.setPosition(int(round(self.tL*1000)))
             print("更改播放范围为： ", self.tL, " ", self.tR)
+        elif self.mode1.isChecked() and (cond1 or cond2):
+            self.tL_spinbox.setValue(round(0, 2))
+            self.tR_spinbox.setValue(round(self.duration, 2))
+        elif self.mode2.isChecked() and cond1:
+            end = True
+            for i, val in enumerate(self.data_dict.values()):
+                if i%2==0: continue
+                tmp_tL = round(float(val[4].text()), 2)
+                tmp_tR = round(float(val[7].text()), 2)
+                if tmp_tL > self.tR:
+                    end = False
+                    self.media_player.setPosition(int(round(tmp_tL*1000)))
+                    self.tL_spinbox.setValue(round(tmp_tL, 2))
+                    self.tR_spinbox.setValue(round(tmp_tR, 2))
+                    for j in range(len(self.data_dict.keys())):
+                        if j%2==0: continue
+                        if j==i:
+                            self.tL_spinbox.setValue(round(float(self.data_dict[j][4].text()), 2))
+                            self.tR_spinbox.setValue(round(float(self.data_dict[j][7].text()), 2))
+                            self.data_dict[j][4].setStyleSheet("QLineEdit { background-color: gray; }")
+                            self.data_dict[j][7].setStyleSheet("QLineEdit { background-color: white; }")
+                        else:
+                            self.data_dict[j][4].setStyleSheet("QLineEdit { background-color: white; }")
+                            self.data_dict[j][7].setStyleSheet("QLineEdit { background-color: white; }")
+                    break
+            if end == True:
+                self.media_player.pause()
+        elif self.mode2.isChecked() and cond2:
+            self.media_player.setPosition(int(round(self.tL*1000)))
+            
 
     def update_tL(self):
         self.tL = self.tL_spinbox.value()
@@ -282,10 +333,10 @@ class CutRange(QMainWindow):
                 radiobutton2 = QRadioButton(f"Noise", self.scroll_widget); buttongroup.addButton(radiobutton2)
                 if i==0:
                     line_edit0 = QLineEdit("0", self.scroll_widget)
-                    line_edit1 = QLineEdit(str(round(float(self.data_dict[i+3][4].text())-0.001, 3)), self.scroll_widget)
+                    line_edit1 = QLineEdit(str(round(float(self.data_dict[i+3][4].text())-0.001, 2)), self.scroll_widget)
                 else:
-                    line_edit0 = QLineEdit(str(round(float(self.data_dict[i-1][7].text())+0.001, 3)), self.scroll_widget)
-                    line_edit1 = QLineEdit(str(round(float(self.data_dict[i+3][4].text())-0.001, 3)), self.scroll_widget)
+                    line_edit0 = QLineEdit(str(round(float(self.data_dict[i-1][7].text())+0.001, 2)), self.scroll_widget)
+                    line_edit1 = QLineEdit(str(round(float(self.data_dict[i+3][4].text())-0.001, 2)), self.scroll_widget)
                 line_edit0.setFixedWidth(80)
                 line_edit1.setFixedWidth(80)
                 # 音量减小增加键
@@ -316,72 +367,72 @@ class CutRange(QMainWindow):
                 self.data_dict[i] = [button]
                 self.plot_cut_range()
                 self.data_dict[i+1][4].setStyleSheet("QLineEdit { background-color: gray; }")
-                self.tL_spinbox.setValue(round(float(self.data_dict[i+1][4].text()), 3))
-                self.tR_spinbox.setValue(round(float(self.data_dict[i+1][7].text()), 3))
+                self.tL_spinbox.setValue(round(float(self.data_dict[i+1][4].text()), 2))
+                self.tR_spinbox.setValue(round(float(self.data_dict[i+1][7].text()), 2))
                 break
                 
     def _increase_text_and_play_tL_by_key(self):
         for i in self.data_dict.keys():
             if i%2!=1: continue
             if self.sender() == self.data_dict[i][5]:
-                tL = round(float(self.data_dict[i][4].text())+1, 3)
-                if tL > round(float(self.data_dict[i][7].text())-0.001, 3):
+                tL = round(float(self.data_dict[i][4].text())+1, 2)
+                if tL > round(float(self.data_dict[i][7].text())-0.001, 2):
                     print("数值太大")
-                elif (i>1) and (tL < round(float(self.data_dict[i-2][7].text())+0.001, 3)):
+                elif (i>1) and (tL < round(float(self.data_dict[i-2][7].text())+0.001, 2)):
                     print("数值太小")
                 else:
                     self.data_dict[i][4].setText(str(tL))
                     self.tL_spinbox.setValue(tL)
-                    self.media_player.setPosition(int(round(self.tL*1000,3)))
+                    self.media_player.setPosition(int(round(self.tL*1000,2)))
 
     def _decrease_text_and_play_tL_by_key(self):
         for i in self.data_dict.keys():
             if i%2!=1: continue
             if self.sender() == self.data_dict[i][3]:
-                tL = round(float(self.data_dict[i][4].text())-1, 3)
-                if tL > round(float(self.data_dict[i][7].text())-0.001, 3):
+                tL = round(float(self.data_dict[i][4].text())-1, 2)
+                if tL > round(float(self.data_dict[i][7].text())-0.001, 2):
                     print("数值太大")
-                elif (i>1) and (tL < round(float(self.data_dict[i-2][7].text())+0.001, 3)):
+                elif (i>1) and (tL < round(float(self.data_dict[i-2][7].text())+0.001, 2)):
                     print("数值太小")
                 else:
                     self.data_dict[i][4].setText(str(tL))
                     self.tL_spinbox.setValue(tL)
-                    self.media_player.setPosition(int(round(self.tL*1000,3)))
+                    self.media_player.setPosition(int(round(self.tL*1000,2)))
 
     def _increase_text_and_play_tR_by_key(self):
         for i in self.data_dict.keys():
             if i%2!=1: continue
             if self.sender() == self.data_dict[i][8]:
-                tR = round(float(self.data_dict[i][7].text()), 3) + 1
-                if tR < round(float(self.data_dict[i][4].text()), 3)+0.001:
+                tR = round(float(self.data_dict[i][7].text()), 2) + 1
+                if tR < round(float(self.data_dict[i][4].text()), 2)+0.001:
                     print("数值太小")
-                elif (i<max(range(len(range(len(self.data_dict.keys())))))) and (tR > round(float(self.data_dict[i+2][4].text()), 3)-0.001):
+                elif (i<max(range(len(range(len(self.data_dict.keys())))))) and (tR > round(float(self.data_dict[i+2][4].text()), 2)-0.001):
                     print("数值太大")
                 else:
                     self.data_dict[i][7].setText(str(tR))
                     self.tR_spinbox.setValue(tR)
-                    self.media_player.setPosition(int(round(max(self.tR-1, self.tL)*1000,3)))
+                    self.media_player.setPosition(int(round(max(self.tR-1, self.tL)*1000,2)))
 
     def _decrease_text_and_play_tR_by_key(self):
         for i in self.data_dict.keys():
             if i%2!=1: continue
             if self.sender() == self.data_dict[i][6]:
-                tR = round(float(self.data_dict[i][7].text()), 3) - 1
-                if tR < round(float(self.data_dict[i][4].text()), 3)+0.001:
+                tR = round(float(self.data_dict[i][7].text()), 2) - 1
+                if tR < round(float(self.data_dict[i][4].text()), 2)+0.001:
                     print("数值太小")
-                elif (i<max(range(len(self.data_dict.keys())))) and (tR > round(float(self.data_dict[i+2][4].text()), 3)-0.001):
+                elif (i<max(range(len(self.data_dict.keys())))) and (tR > round(float(self.data_dict[i+2][4].text()), 2)-0.001):
                     print("数值太大")
                 else:
                     self.data_dict[i][7].setText(str(tR))
                     self.tR_spinbox.setValue(tR)
-                    self.media_player.setPosition(int(round(max(self.tR-1, self.tL)*1000,3)))
+                    self.media_player.setPosition(int(round(max(self.tR-1, self.tL)*1000,2)))
 
     def _tL_select(self):
         for i in range(len(self.data_dict.keys())):
             if i%2==0: continue
             if self.sender() == self.data_dict[i][4]:
-                self.tL_spinbox.setValue(round(float(self.data_dict[i][4].text()), 3))
-                self.tR_spinbox.setValue(round(float(self.data_dict[i][7].text()), 3))
+                self.tL_spinbox.setValue(round(float(self.data_dict[i][4].text()), 2))
+                self.tR_spinbox.setValue(round(float(self.data_dict[i][7].text()), 2))
                 self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: gray; }")
                 self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: white; }")
             else:
@@ -391,8 +442,8 @@ class CutRange(QMainWindow):
         for i in range(len(self.data_dict.keys())):
             if i%2==0: continue
             if self.sender() == self.data_dict[i][7]:
-                self.tL_spinbox.setValue(round(float(self.data_dict[i][4].text()), 3))
-                self.tR_spinbox.setValue(round(float(self.data_dict[i][7].text()), 3))
+                self.tL_spinbox.setValue(round(float(self.data_dict[i][4].text()), 2))
+                self.tR_spinbox.setValue(round(float(self.data_dict[i][7].text()), 2))
                 self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: white; }")
                 self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: gray; }")
             else:
@@ -407,12 +458,12 @@ class CutRange(QMainWindow):
         for i in range(len(self.data_dict.keys())):
             if i%2!=0: continue
             if self.data_dict[i][0].isChecked():
-                t1 = round(float(self.data_dict[i][4].text()),3)
-                t2 = round(float(self.data_dict[i][7].text()),3)
+                t1 = round(float(self.data_dict[i][4].text()),2)
+                t2 = round(float(self.data_dict[i][7].text()),2)
                 t_ranges.append((t1, t2))
             elif self.data_dict[i][1].isChecked():
-                t1 = round(float(self.data_dict[i][4].text()),3)
-                t2 = round(float(self.data_dict[i][7].text()),3)
+                t1 = round(float(self.data_dict[i][4].text()),2)
+                t2 = round(float(self.data_dict[i][7].text()),2)
                 t_ranges.append((t1, t2))
             elif self.data_dict[i][2].isChecked():
                 continue
