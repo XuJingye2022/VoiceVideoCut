@@ -1,5 +1,6 @@
 import sys, os
-from PyQt5.QtCore import QUrl, QTimer, QThread, pyqtSignal
+from PyQt5.QtCore import QUrl, QTimer, QThread, pyqtSignal, Qt
+from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, \
@@ -95,7 +96,7 @@ class CutRange(QMainWindow):
         # ============== Button.2 Analyze Recording Video ==============
         self.analyze_button = QPushButton("Analyze", self)
         self.analyze_button.setGeometry(20+self.button_w, self.video_h+20, self.button_w, self.button_h)
-        self.analyze_button.clicked.connect(self.get_time_set)
+        self.analyze_button.clicked.connect(self.analyze_video)
 
         # ============== Button.3 PLAY/STOP video ==============
         self.play_button = QPushButton("Stop", self)
@@ -127,23 +128,6 @@ class CutRange(QMainWindow):
         self.scroll_area.setGeometry(self.video_w+20, 10, self.scroll_area_w, 10+self.video_h+self.button_h)
         self.plot_cut_range()
 
-
-    def load_cut_range_from_file(self):
-        speech_range_data = os.path.join(self.root, "SpeechRange.csv")
-        cut_range_data = os.path.join(self.root, "CutRange.csv")
-        if os.path.exists(cut_range_data):
-            df = pd.read_csv(cut_range_data, names=["Start Time", "End Time"])
-        elif os.path.exists(speech_range_data):
-            df = pd.read_csv(speech_range_data, names=["Start Time", "End Time"])
-        else:
-            print("???")
-            return None
-        for i in range(len(df)):
-            self.data_dict[i] = [None, None, None, None, df.iloc[i, 0], None, None, df.iloc[i, 1], None]  #????麻烦
-        # 删除全部QCheckBox, QLineEdit, 
-        self.delete_cut_range_area()
-        self.plot_cut_range()
-        
     def open_video_file(self):
         file_dialog = QFileDialog(self)
         file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
@@ -160,6 +144,75 @@ class CutRange(QMainWindow):
             self.media_player.positionChanged.connect(self.update_progress_bar)
             self.media_player.play()
             self.timer.start(10)
+
+    def load_speech_range_from_file(self):
+        speech_range_data = os.path.join(self.root, "SpeechRange.csv")
+        cut_range_data = os.path.join(self.root, "CutRange.csv")
+        if os.path.exists(cut_range_data):
+            df = pd.read_csv(cut_range_data, names=["Start Time", "End Time"])
+        elif os.path.exists(speech_range_data):
+            df = pd.read_csv(speech_range_data, names=["Start Time", "End Time"])
+        else:
+            print("???"); return None
+        # ============= load to self.data_dict ================
+        # Create a widget to hold the line edits
+        self.scroll_widget = QWidget()
+        # Create a grid layout for the widget
+        self.scroll_layout = QGridLayout(self.scroll_widget)
+        self.scroll_layout.setVerticalSpacing(1)
+        for i in range(2*len(df)+1):
+            if i%2 == 0:
+                button = QPushButton("-"*int(floor(self.scroll_area_w/7)), self)
+                button.setFixedHeight(10)
+                button.clicked.connect(self._add_new_row)
+                self.scroll_layout.addWidget(button, i, 0, 1, 9)
+                self.data_dict[i] = [button]
+            else:
+                buttongroup = QButtonGroup(self)
+                radiobutton0 = QRadioButton(f"Trans", self.scroll_widget); buttongroup.addButton(radiobutton0)
+                radiobutton0.setEnabled(False)  # 这个按钮暂时不需要
+                radiobutton1 = QRadioButton(f"Chat", self.scroll_widget); buttongroup.addButton(radiobutton1)
+                radiobutton2 = QRadioButton(f"Noise", self.scroll_widget); buttongroup.addButton(radiobutton2)
+                line_edit0 = QLineEdit(str(round(df.iloc[(i-1)//2, 0],3)), self.scroll_widget)
+                line_edit1 = QLineEdit(str(round(df.iloc[(i-1)//2, 1],3)), self.scroll_widget)
+                line_edit0.setFixedWidth(80)
+                line_edit1.setFixedWidth(80)
+                radiobutton1.setChecked(True)
+                # 音量减小增加键
+                tL_dcs_btn = QPushButton("-1", self)
+                tL_dcs_btn.setFixedSize(20, 20)
+                tL_dcs_btn.clicked.connect(self._decrease_text_and_play_tL_by_key)
+                tL_ics_btn = QPushButton("+1", self)
+                tL_ics_btn.setFixedSize(20, 20)
+                tL_ics_btn.clicked.connect(self._increase_text_and_play_tL_by_key)
+                tR_dcs_btn = QPushButton("-1", self)
+                tR_dcs_btn.setFixedSize(20, 20)
+                tR_dcs_btn.clicked.connect(self._decrease_text_and_play_tR_by_key)
+                tR_ics_btn = QPushButton("+1", self)
+                tR_ics_btn.setFixedSize(20, 20)
+                tR_ics_btn.clicked.connect(self._increase_text_and_play_tR_by_key)
+                # 事件绑定： 光标更改， 即刻更改播放范围
+                line_edit0.cursorPositionChanged.connect(self._tL_select)
+                line_edit1.cursorPositionChanged.connect(self._tR_select)
+                # 更新总体数据
+                self.data_dict[i] = [radiobutton0, radiobutton1, radiobutton2, \
+                                        tL_dcs_btn, line_edit0, tL_ics_btn, \
+                                            tR_dcs_btn, line_edit1, tR_ics_btn]
+
+                # Add the widgets to the grid layout
+                self.scroll_layout.addWidget(radiobutton0, i, 0)
+                self.scroll_layout.addWidget(radiobutton1, i, 1)
+                self.scroll_layout.addWidget(radiobutton2, i, 2)
+                self.scroll_layout.addWidget(tL_dcs_btn, i, 3)
+                self.scroll_layout.addWidget(line_edit0, i, 4)
+                self.scroll_layout.addWidget(tL_ics_btn, i, 5)
+                self.scroll_layout.addWidget(tR_dcs_btn, i, 6)
+                self.scroll_layout.addWidget(line_edit1, i, 7)
+                self.scroll_layout.addWidget(tR_ics_btn, i, 8)
+        # Set the widget for the scroll area
+        self.scroll_area.setWidget(self.scroll_widget)
+        self.update()
+        
         
     def play_video(self):
         if self.root == "":
@@ -191,168 +244,168 @@ class CutRange(QMainWindow):
     def update_tR(self):
         self.tR = self.tR_spinbox.value()
     
-    def delete_cut_range_area(self):
-        for i in reversed(range(self.scroll_widget.layout().count())):
-            self.scroll_widget.layout().itemAt(i).widget().setParent(None)
-
     def plot_cut_range(self):
         # Create a widget to hold the line edits
         self.scroll_widget = QWidget()
         # Create a grid layout for the widget
         self.scroll_layout = QGridLayout(self.scroll_widget)
-        if len(self.data_dict)==0:
-            for i in range(10):
-                buttongroup = QButtonGroup(self)
-                radiobutton0 = QRadioButton(f"Trans", self.scroll_widget); buttongroup.addButton(radiobutton0)
-                radiobutton0.setEnabled(False)  # 这个按钮暂时不需要
-                radiobutton1 = QRadioButton(f"Chat", self.scroll_widget); buttongroup.addButton(radiobutton1)
-                radiobutton2 = QRadioButton(f"Noise", self.scroll_widget); buttongroup.addButton(radiobutton2)
-                line_edit0 = QLineEdit(str(""), self.scroll_widget); line_edit0.setFixedWidth(80)
-                line_edit1 = QLineEdit(str(""), self.scroll_widget); line_edit1.setFixedWidth(80)
-                radiobutton1.setChecked(True)
-                # 音量减小增加键
-                tL_dcs_btn = QPushButton("-1", self)
-                tL_dcs_btn.setFixedSize(20, 20)
-                tL_dcs_btn.clicked.connect(self.decrease_text_and_play_tL_by_key)
-                tL_ics_btn = QPushButton("+1", self)
-                tL_ics_btn.setFixedSize(20, 20)
-                tL_ics_btn.clicked.connect(self.increase_text_and_play_tL_by_key)
-                tR_dcs_btn = QPushButton("-1", self)
-                tR_dcs_btn.setFixedSize(20, 20)
-                tR_dcs_btn.clicked.connect(self.decrease_text_and_play_tR_by_key)
-                tR_ics_btn = QPushButton("+1", self)
-                tR_ics_btn.setFixedSize(20, 20)
-                tR_ics_btn.clicked.connect(self.increase_text_and_play_tR_by_key)
-                self.data_dict[i] = [radiobutton0, radiobutton1, radiobutton2, \
-                                        tL_dcs_btn, line_edit0, tL_ics_btn, \
-                                            tR_dcs_btn, line_edit1, tR_ics_btn]
-
+        self.scroll_layout.setVerticalSpacing(1)
+        for i in range(len(self.data_dict.keys())):
+            if i%2 == 0:
+                self.scroll_layout.addWidget(self.data_dict[i][0], i, 0, 1, 9)
+            else:
                 # Add the widgets to the grid layout
-                self.scroll_layout.addWidget(radiobutton0, i, 0)
-                self.scroll_layout.addWidget(radiobutton1, i, 1)
-                self.scroll_layout.addWidget(radiobutton2, i, 2)
-                self.scroll_layout.addWidget(tL_dcs_btn, i, 3)
-                self.scroll_layout.addWidget(line_edit0, i, 4)
-                self.scroll_layout.addWidget(tL_ics_btn, i, 5)
-                self.scroll_layout.addWidget(tR_dcs_btn, i, 6)
-                self.scroll_layout.addWidget(line_edit1, i, 7)
-                self.scroll_layout.addWidget(tR_ics_btn, i, 8)
-        else:
-            for i in range(0, len(self.data_dict)):
-                buttongroup = QButtonGroup(self)
-                radiobutton0 = QRadioButton(f"Trans", self.scroll_widget); buttongroup.addButton(radiobutton0)
-                radiobutton0.setEnabled(False)  # 这个按钮暂时不需要
-                radiobutton1 = QRadioButton(f"Chat", self.scroll_widget); buttongroup.addButton(radiobutton1)
-                radiobutton2 = QRadioButton(f"Noise", self.scroll_widget); buttongroup.addButton(radiobutton2)
-                line_edit0 = QLineEdit(str(round(self.data_dict[i][4],3)), self.scroll_widget)
-                line_edit1 = QLineEdit(str(round(self.data_dict[i][7],3)), self.scroll_widget)
-                line_edit0.setFixedWidth(80)
-                line_edit1.setFixedWidth(80)
-                radiobutton1.setChecked(True)
-                # 音量减小增加键
-                tL_dcs_btn = QPushButton("-1", self)
-                tL_dcs_btn.setFixedSize(20, 20)
-                tL_dcs_btn.clicked.connect(self.decrease_text_and_play_tL_by_key)
-                tL_ics_btn = QPushButton("+1", self)
-                tL_ics_btn.setFixedSize(20, 20)
-                tL_ics_btn.clicked.connect(self.increase_text_and_play_tL_by_key)
-                tR_dcs_btn = QPushButton("-1", self)
-                tR_dcs_btn.setFixedSize(20, 20)
-                tR_dcs_btn.clicked.connect(self.decrease_text_and_play_tR_by_key)
-                tR_ics_btn = QPushButton("+1", self)
-                tR_ics_btn.setFixedSize(20, 20)
-                tR_ics_btn.clicked.connect(self.increase_text_and_play_tR_by_key)
-                # 事件绑定： 光标更改， 即刻更改播放范围
-                line_edit0.cursorPositionChanged.connect(self.change_play_range_tL)
-                line_edit1.cursorPositionChanged.connect(self.change_play_range_tR)
-                # 更新总体数据
-                self.data_dict[i] = [radiobutton0, radiobutton1, radiobutton2, \
-                                        tL_dcs_btn, line_edit0, tL_ics_btn, \
-                                            tR_dcs_btn, line_edit1, tR_ics_btn]
-
-                # Add the widgets to the grid layout
-                self.scroll_layout.addWidget(radiobutton0, i, 0)
-                self.scroll_layout.addWidget(radiobutton1, i, 1)
-                self.scroll_layout.addWidget(radiobutton2, i, 2)
-                self.scroll_layout.addWidget(tL_dcs_btn, i, 3)
-                self.scroll_layout.addWidget(line_edit0, i, 4)
-                self.scroll_layout.addWidget(tL_ics_btn, i, 5)
-                self.scroll_layout.addWidget(tR_dcs_btn, i, 6)
-                self.scroll_layout.addWidget(line_edit1, i, 7)
-                self.scroll_layout.addWidget(tR_ics_btn, i, 8)
+                self.scroll_layout.addWidget(self.data_dict[i][0], i, 0)
+                self.scroll_layout.addWidget(self.data_dict[i][1], i, 1)
+                self.scroll_layout.addWidget(self.data_dict[i][2], i, 2)
+                self.scroll_layout.addWidget(self.data_dict[i][3], i, 3)
+                self.scroll_layout.addWidget(self.data_dict[i][4], i, 4)
+                self.scroll_layout.addWidget(self.data_dict[i][5], i, 5)
+                self.scroll_layout.addWidget(self.data_dict[i][6], i, 6)
+                self.scroll_layout.addWidget(self.data_dict[i][7], i, 7)
+                self.scroll_layout.addWidget(self.data_dict[i][8], i, 8)
         # Set the widget for the scroll area
         self.scroll_area.setWidget(self.scroll_widget)
-        self.update()
 
-    def increase_text_and_play_tL_by_key(self):
-        for i in range(len(self.data_dict)):
+    def _add_new_row(self):
+        for i in range(len(self.data_dict.keys())):
+            if i%2!=0: continue
+            if self.sender() == self.data_dict[i][0]:
+                for j in range(len(self.data_dict)+1, i+1, -1):
+                    self.data_dict[j] = self.data_dict[j-2]
+                # New line: 1
+                buttongroup = QButtonGroup(self)
+                radiobutton0 = QRadioButton(f"Trans", self.scroll_widget); buttongroup.addButton(radiobutton0)
+                radiobutton0.setChecked(True)
+                radiobutton1 = QRadioButton(f"Chat", self.scroll_widget); buttongroup.addButton(radiobutton1)
+                radiobutton1.setEnabled(False)  # 这个按钮暂时不需要
+                radiobutton2 = QRadioButton(f"Noise", self.scroll_widget); buttongroup.addButton(radiobutton2)
+                if i==0:
+                    line_edit0 = QLineEdit("0", self.scroll_widget)
+                    line_edit1 = QLineEdit(str(round(float(self.data_dict[i+3][4].text())-0.001, 3)), self.scroll_widget)
+                else:
+                    line_edit0 = QLineEdit(str(round(float(self.data_dict[i-1][7].text())+0.001, 3)), self.scroll_widget)
+                    line_edit1 = QLineEdit(str(round(float(self.data_dict[i+3][4].text())-0.001, 3)), self.scroll_widget)
+                line_edit0.setFixedWidth(80)
+                line_edit1.setFixedWidth(80)
+                # 音量减小增加键
+                tL_dcs_btn = QPushButton("-1", self)
+                tL_dcs_btn.setFixedSize(20, 20)
+                tL_dcs_btn.clicked.connect(self._decrease_text_and_play_tL_by_key)
+                tL_ics_btn = QPushButton("+1", self)
+                tL_ics_btn.setFixedSize(20, 20)
+                tL_ics_btn.clicked.connect(self._increase_text_and_play_tL_by_key)
+                tR_dcs_btn = QPushButton("-1", self)
+                tR_dcs_btn.setFixedSize(20, 20)
+                tR_dcs_btn.clicked.connect(self._decrease_text_and_play_tR_by_key)
+                tR_ics_btn = QPushButton("+1", self)
+                tR_ics_btn.setFixedSize(20, 20)
+                tR_ics_btn.clicked.connect(self._increase_text_and_play_tR_by_key)
+                # 事件绑定： 光标更改， 即刻更改播放范围
+                line_edit0.cursorPositionChanged.connect(self._tL_select)
+                line_edit1.cursorPositionChanged.connect(self._tR_select)
+                # 更新总体数据
+                self.data_dict[i+1] = [radiobutton0, radiobutton1, radiobutton2, \
+                                        tL_dcs_btn, line_edit0, tL_ics_btn, \
+                                            tR_dcs_btn, line_edit1, tR_ics_btn]
+                # New Line: 2
+                button = QPushButton("-"*int(floor(self.scroll_area_w/7)), self)
+                button.setFixedHeight(10)
+                button.clicked.connect(self._add_new_row)
+                self.scroll_layout.addWidget(button, i, 0, 1, 9)
+                self.data_dict[i] = [button]
+                self.plot_cut_range()
+                self.data_dict[i+1][4].setStyleSheet("QLineEdit { background-color: gray; }")
+                self.tL_spinbox.setValue(round(float(self.data_dict[i+1][4].text()), 3))
+                self.tR_spinbox.setValue(round(float(self.data_dict[i+1][7].text()), 3))
+                break
+                
+    def _increase_text_and_play_tL_by_key(self):
+        for i in self.data_dict.keys():
+            if i%2!=1: continue
             if self.sender() == self.data_dict[i][5]:
-                tL = round(float(self.data_dict[i][4].text()), 3) + 1
-                if tL > round(float(self.data_dict[i][7].text()), 3) - 0.001:
+                tL = round(float(self.data_dict[i][4].text())+1, 3)
+                if tL > round(float(self.data_dict[i][7].text())-0.001, 3):
                     print("数值太大")
-                elif (i>0) and (tL < round(float(self.data_dict[i-1][7].text()), 3)+0.001):
+                elif (i>1) and (tL < round(float(self.data_dict[i-2][7].text())+0.001, 3)):
                     print("数值太小")
                 else:
                     self.data_dict[i][4].setText(str(tL))
                     self.tL_spinbox.setValue(tL)
                     self.media_player.setPosition(int(round(self.tL*1000,3)))
 
-    def decrease_text_and_play_tL_by_key(self):
-        for i in range(len(self.data_dict)):
+    def _decrease_text_and_play_tL_by_key(self):
+        for i in self.data_dict.keys():
+            if i%2!=1: continue
             if self.sender() == self.data_dict[i][3]:
-                tL = round(float(self.data_dict[i][4].text()), 3) - 1
-                if tL > round(float(self.data_dict[i][7].text()), 3) - 0.001:
+                tL = round(float(self.data_dict[i][4].text())-1, 3)
+                if tL > round(float(self.data_dict[i][7].text())-0.001, 3):
                     print("数值太大")
-                elif (i>0) and (tL < round(float(self.data_dict[i-1][7].text()), 3)+0.001):
+                elif (i>1) and (tL < round(float(self.data_dict[i-2][7].text())+0.001, 3)):
                     print("数值太小")
                 else:
                     self.data_dict[i][4].setText(str(tL))
                     self.tL_spinbox.setValue(tL)
                     self.media_player.setPosition(int(round(self.tL*1000,3)))
 
-    def increase_text_and_play_tR_by_key(self):
-        for i in range(len(self.data_dict)):
+    def _increase_text_and_play_tR_by_key(self):
+        for i in self.data_dict.keys():
+            if i%2!=1: continue
             if self.sender() == self.data_dict[i][8]:
                 tR = round(float(self.data_dict[i][7].text()), 3) + 1
                 if tR < round(float(self.data_dict[i][4].text()), 3)+0.001:
                     print("数值太小")
-                elif (i<len(self.data_dict)) and (tR > round(float(self.data_dict[i+1][4].text()), 3)-0.001):
+                elif (i<max(range(len(range(len(self.data_dict.keys())))))) and (tR > round(float(self.data_dict[i+2][4].text()), 3)-0.001):
                     print("数值太大")
                 else:
                     self.data_dict[i][7].setText(str(tR))
                     self.tR_spinbox.setValue(tR)
                     self.media_player.setPosition(int(round(max(self.tR-1, self.tL)*1000,3)))
 
-    def decrease_text_and_play_tR_by_key(self):
-        for i in range(len(self.data_dict)):
+    def _decrease_text_and_play_tR_by_key(self):
+        for i in self.data_dict.keys():
+            if i%2!=1: continue
             if self.sender() == self.data_dict[i][6]:
                 tR = round(float(self.data_dict[i][7].text()), 3) - 1
                 if tR < round(float(self.data_dict[i][4].text()), 3)+0.001:
                     print("数值太小")
-                elif (i<len(self.data_dict)) and (tR > round(float(self.data_dict[i+1][4].text()), 3)-0.001):
+                elif (i<max(range(len(self.data_dict.keys())))) and (tR > round(float(self.data_dict[i+2][4].text()), 3)-0.001):
                     print("数值太大")
                 else:
                     self.data_dict[i][7].setText(str(tR))
                     self.tR_spinbox.setValue(tR)
                     self.media_player.setPosition(int(round(max(self.tR-1, self.tL)*1000,3)))
 
-    def change_play_range_tL(self):
-        for i in range(len(self.data_dict)):
+    def _tL_select(self):
+        for i in range(len(self.data_dict.keys())):
+            if i%2==0: continue
             if self.sender() == self.data_dict[i][4]:
-                self.tL_spinbox.setValue(float(self.data_dict[i][4].text()))
-                self.tR_spinbox.setValue(float(self.data_dict[i][7].text()))
-    def change_play_range_tR(self):
-        for i in range(len(self.data_dict)):
+                self.tL_spinbox.setValue(round(float(self.data_dict[i][4].text()), 3))
+                self.tR_spinbox.setValue(round(float(self.data_dict[i][7].text()), 3))
+                self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: gray; }")
+                self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: white; }")
+            else:
+                self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: white; }")
+                self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: white; }")
+    def _tR_select(self):
+        for i in range(len(self.data_dict.keys())):
+            if i%2==0: continue
             if self.sender() == self.data_dict[i][7]:
-                self.tL_spinbox.setValue(float(self.data_dict[i][4].text()))
-                self.tR_spinbox.setValue(float(self.data_dict[i][7].text()))
+                self.tL_spinbox.setValue(round(float(self.data_dict[i][4].text()), 3))
+                self.tR_spinbox.setValue(round(float(self.data_dict[i][7].text()), 3))
+                self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: white; }")
+                self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: gray; }")
+            else:
+                self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: white; }")
+                self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: white; }")
 
 
     def save_new_range(self):
         df = pd.DataFrame(columns=["Start Time", "End Time"])
         all_choose = True
         t_ranges = []
-        for i in range(len(self.data_dict)):
+        for i in range(len(self.data_dict.keys())):
+            if i%2!=0: continue
             if self.data_dict[i][0].isChecked():
                 t1 = round(float(self.data_dict[i][4].text()),3)
                 t2 = round(float(self.data_dict[i][7].text()),3)
@@ -371,7 +424,6 @@ class CutRange(QMainWindow):
                 raise "先指定视频文件"
         else:
             raise "还有的没选呢"
-
         # Combine Ranges
         t_ranges = combine_ranges(t_ranges, 1.002)
         # Remove Short Noise?
@@ -379,15 +431,16 @@ class CutRange(QMainWindow):
         df = pd.DataFrame(t_ranges)
         df.to_csv(os.path.join(self.root, "CutRange.csv"), index=False, header=False)
 
-    def get_time_set(self):
+    def analyze_video(self):
         if self.root == "":
             QMessageBox.information(self, "Error", "???\nNo video file has selected!")
             return None
+        
         path_initial_cut_range = os.path.join(self.root, "SpeechRange.csv")
         if not os.path.exists(path_initial_cut_range):
             game = Gam(path_initial_cut_range, THREADS, SETTINGS)
             game.get_time_set_to_cut(self.root)
-        self.load_cut_range_from_file()
+        self.load_speech_range_from_file()
 
 
     def cut_game_video(self):

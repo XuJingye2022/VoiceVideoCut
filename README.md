@@ -78,5 +78,6 @@
 - 用的时候小心点.
 
 我自己打算增加如下功能:
-- [ ] 光标移动到剪辑时间范围的中间时， 会出现`+`按钮， 你可以点击它增加新的行. 新的行不默认为Chat, 而是Trans, 意味着Transition scenes, 过渡场景. 用来交代从前一个场景到后一个场景的过渡. 用来交代游戏角色动作的连续. QRadioButton三个分别为: Trans, Chat(enable=False), noise.
-- [ ] 
+- [x] 光标移动到剪辑时间范围的中间时， 会出现`+`按钮， 你可以点击它增加新的行. 新的行不默认为Chat, 而是Trans, 意味着Transition scenes, 过渡场景. 用来交代从前一个场景到后一个场景的过渡. 用来交代游戏角色动作的连续. QRadioButton三个分别为: Trans, Chat(enable=False), noise.
+    
+    OK, you can add new clip range bwtween two clipping ranges now.
