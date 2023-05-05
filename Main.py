@@ -145,9 +145,7 @@ class CutRange(QMainWindow):
         buttongroup.addButton(self.mode0)
         buttongroup.addButton(self.mode1)
         buttongroup.addButton(self.mode2)
-        main_layout = QHBoxLayout()
-        main_layout.addLayout(mode_layout)
-        self.setLayout(main_layout)
+
 
     def open_video_file(self):
         file_dialog = QFileDialog(self)
