@@ -1,13 +1,12 @@
 import sys, os
-from PyQt5.QtCore import QUrl, QTimer, QThread, pyqtSignal, Qt
-from PyQt5.QtGui import QPalette, QColor
+from PyQt5.QtCore import QUrl, QTimer, QThread, pyqtSignal
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, \
     QFileDialog, QPushButton, QScrollArea, QLineEdit, QWidget, \
     QPushButton, QDoubleSpinBox, QProgressBar, QRadioButton, QButtonGroup, \
     QMessageBox, QHBoxLayout, QLabel
-from small_tools.pic_video_attribution import get_size, get_duration
+from small_tools.pic_video_attribution import get_duration
 import pandas as pd
 import toml
 from math import floor
@@ -585,13 +584,13 @@ class CutRange(QMainWindow):
                 os.remove(file)
 
     def _pre_page(self):
-        if self.pagenum > 1:
+        if self.pagenum > 0:
             self.pagenum -= 1
             self.label_page.setText("%s/%s"%(self.pagenum+1, len(self.widgets_range_per_page)))
             self._plot_cut_range()
 
     def _nex_page(self):
-        if self.pagenum < len(self.widgets_range_per_page):
+        if self.pagenum < len(self.widgets_range_per_page)-1:
             self.pagenum += 1
             self.label_page.setText("%s/%s"%(self.pagenum+1, len(self.widgets_range_per_page)))
             self._plot_cut_range()
