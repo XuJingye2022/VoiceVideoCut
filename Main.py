@@ -19,6 +19,16 @@ from small_tools.filemani import get_all_suffixs_files
 THREADS = 5
 SETTINGS = toml.load("./settings.toml")
 
+class QSSLoader:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def read_qss_file(qss_file_name):
+        with open(qss_file_name, 'r',  encoding='UTF-8') as file:
+            return file.read()
+
+
 class ThreadCut(QThread):
     """剪切视频的线程
     """
@@ -49,15 +59,15 @@ class CutRange(QMainWindow):
     def __init__(self):
         # ========== 参数 ============
         self.window_title = "Adjust Cut Range"
-        self.video_w = 800
-        self.video_h = 450
-        self.scroll_area_w = 480
+        self.video_w = 1200
+        self.video_h = 675
+        self.scroll_area_w = 560
         self.progress_bar_h = 4
         self.button_w = int(floor(self.video_w-60)/7)
         self.button_h = 30
         self.window_w = self.video_w + self.scroll_area_w + 30
         self.window_h = self.video_h + self.button_h + 30
-        self.mode_w = int(floor(self.scroll_area_w/3))
+        self.mode_w = int(floor((self.scroll_area_w-20)/3))
         self.mode_h = 20
         # Something will used
         self.root = ""
@@ -68,6 +78,9 @@ class CutRange(QMainWindow):
         super().__init__()
         self.setFixedSize(self.window_w, self.window_h)
         self.setWindowTitle(self.window_title)
+        style_file = './QSS-master/Ubuntu.qss'
+        style_sheet = QSSLoader.read_qss_file(style_file)
+        self.setStyleSheet(style_sheet)
         
         # ============== Video Play ==============
         self.media_player = QMediaPlayer(self)
@@ -199,16 +212,16 @@ class CutRange(QMainWindow):
                 radiobutton1.setChecked(True)
                 # 音量减小增加键
                 tL_dcs_btn = QPushButton("-1", self)
-                tL_dcs_btn.setFixedSize(20, 20)
+                tL_dcs_btn.setFixedSize(25, 25)
                 tL_dcs_btn.clicked.connect(self._decrease_text_and_play_tL_by_key)
                 tL_ics_btn = QPushButton("+1", self)
-                tL_ics_btn.setFixedSize(20, 20)
+                tL_ics_btn.setFixedSize(25, 25)
                 tL_ics_btn.clicked.connect(self._increase_text_and_play_tL_by_key)
                 tR_dcs_btn = QPushButton("-1", self)
-                tR_dcs_btn.setFixedSize(20, 20)
+                tR_dcs_btn.setFixedSize(25, 25)
                 tR_dcs_btn.clicked.connect(self._decrease_text_and_play_tR_by_key)
                 tR_ics_btn = QPushButton("+1", self)
-                tR_ics_btn.setFixedSize(20, 20)
+                tR_ics_btn.setFixedSize(25, 25)
                 tR_ics_btn.clicked.connect(self._increase_text_and_play_tR_by_key)
                 # 事件绑定： 光标更改， 即刻更改播放范围
                 line_edit0.cursorPositionChanged.connect(self._tL_select)
@@ -339,16 +352,16 @@ class CutRange(QMainWindow):
                 line_edit1.setFixedWidth(80)
                 # 音量减小增加键
                 tL_dcs_btn = QPushButton("-1", self)
-                tL_dcs_btn.setFixedSize(20, 20)
+                tL_dcs_btn.setFixedSize(25, 25)
                 tL_dcs_btn.clicked.connect(self._decrease_text_and_play_tL_by_key)
                 tL_ics_btn = QPushButton("+1", self)
-                tL_ics_btn.setFixedSize(20, 20)
+                tL_ics_btn.setFixedSize(25, 25)
                 tL_ics_btn.clicked.connect(self._increase_text_and_play_tL_by_key)
                 tR_dcs_btn = QPushButton("-1", self)
-                tR_dcs_btn.setFixedSize(20, 20)
+                tR_dcs_btn.setFixedSize(25, 25)
                 tR_dcs_btn.clicked.connect(self._decrease_text_and_play_tR_by_key)
                 tR_ics_btn = QPushButton("+1", self)
-                tR_ics_btn.setFixedSize(20, 20)
+                tR_ics_btn.setFixedSize(25, 25)
                 tR_ics_btn.clicked.connect(self._increase_text_and_play_tR_by_key)
                 # 事件绑定： 光标更改， 即刻更改播放范围
                 line_edit0.cursorPositionChanged.connect(self._tL_select)
