@@ -76,6 +76,7 @@ class CutRange(QMainWindow):
         self.pagenum = 0
         self.widgets_range_per_page = None
         self.idx_range = range(0, self.widgets_number_per_page)
+        self.colored_widget = (0, 0)
         
         # ============== Main Window ==============
         super().__init__()
@@ -117,7 +118,7 @@ class CutRange(QMainWindow):
         self.analyze_button.clicked.connect(self.analyze_video)
 
         # ============== Button.3 PLAY/STOP video ==============
-        self.play_button = QPushButton("Stop", self)
+        self.play_button = QPushButton("STOP", self)
         self.play_button.setGeometry(30+2*self.button_w, self.video_h+20, self.button_w, self.button_h)
         self.play_button.clicked.connect(self.play_video)
 
@@ -360,6 +361,7 @@ class CutRange(QMainWindow):
                     self.tL_spinbox.setValue(tL)
                     self.tR_spinbox.setValue(tR)
                     self.media_player.setPosition(int(round(self.tL*1000,2)))
+                break
 
     def _decrease_text_and_play_tL_by_key(self):
         for i in self.idx_range:
@@ -376,6 +378,7 @@ class CutRange(QMainWindow):
                     self.tL_spinbox.setValue(tL)
                     self.tR_spinbox.setValue(tR)
                     self.media_player.setPosition(int(round(self.tL*1000,2)))
+                break
 
     def _increase_text_and_play_tR_by_key(self):
         for i in self.idx_range:
@@ -392,6 +395,7 @@ class CutRange(QMainWindow):
                     self.tL_spinbox.setValue(tL)
                     self.tR_spinbox.setValue(tR)
                     self.media_player.setPosition(int(round(max(self.tR-2, self.tL)*1000,2)))
+                break
 
     def _decrease_text_and_play_tR_by_key(self):
         for i in self.idx_range:
@@ -408,31 +412,36 @@ class CutRange(QMainWindow):
                     self.tL_spinbox.setValue(tL)
                     self.tR_spinbox.setValue(tR)
                     self.media_player.setPosition(int(round(max(self.tR-2, self.tL)*1000,2)))
+                break
 
     def _tL_select(self):
         for i in self.idx_range:
             if len(self.data_dict[i])==1: continue
             if self.sender() == self.data_dict[i][4]:
+                # Change color
+                colored_row, colored_col = self.colored_widget
+                self.data_dict[colored_row][colored_col].setStyleSheet("QLineEdit { background-color: white; }")
+                self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: gray; }")
+                self.colored_widget = (i, 4)
+                # Change play position and play range
                 self.tL_spinbox.setValue(round(float(self.data_dict[i][4].text()), 2))
                 self.tR_spinbox.setValue(round(float(self.data_dict[i][7].text()), 2))
                 self.media_player.setPosition(int(round(self.tL*1000)))
-                self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: gray; }")
-                self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: white; }")
-            else:
-                self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: white; }")
-                self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: white; }")
+                break
     def _tR_select(self):
         for i in self.idx_range:
             if len(self.data_dict[i])==1: continue
             if self.sender() == self.data_dict[i][7]:
+                # Change color
+                colored_row, colored_col = self.colored_widget
+                self.data_dict[colored_row][colored_col].setStyleSheet("QLineEdit { background-color: white; }")
+                self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: gray; }")
+                self.colored_widget = (i, 7)
+                # Change Play position and play range
                 self.tL_spinbox.setValue(round(float(self.data_dict[i][4].text()), 2))
                 self.tR_spinbox.setValue(round(float(self.data_dict[i][7].text()), 2))
                 self.media_player.setPosition(int(round(self.tL*1000)))
-                self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: white; }")
-                self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: gray; }")
-            else:
-                self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: white; }")
-                self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: white; }")
+                break
 
 
     """
@@ -470,19 +479,15 @@ class CutRange(QMainWindow):
                 tmp_tR = round(float(val[7].text()), 2)
                 if tmp_tL > self.tR:
                     end = False
+                    # Change color
+                    colored_row, colored_col = self.colored_widget
+                    self.data_dict[colored_row][colored_col].setStyleSheet("QLineEdit { background-color: white; }")
+                    self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: gray; }")
+                    self.colored_widget = (i, 4)
+                    # Change video position and play range
                     self.media_player.setPosition(int(round(tmp_tL*1000)))
-                    self.tL_spinbox.setValue(round(tmp_tL, 2))
-                    self.tR_spinbox.setValue(round(tmp_tR, 2))
-                    for j in range(len(self.data_dict.keys())):
-                        if len(self.data_dict[j])==1: continue
-                        if j==i:
-                            self.tL_spinbox.setValue(round(float(self.data_dict[j][4].text()), 2))
-                            self.tR_spinbox.setValue(round(float(self.data_dict[j][7].text()), 2))
-                            self.data_dict[j][4].setStyleSheet("QLineEdit { background-color: gray; }")
-                            self.data_dict[j][7].setStyleSheet("QLineEdit { background-color: white; }")
-                        else:
-                            self.data_dict[j][4].setStyleSheet("QLineEdit { background-color: white; }")
-                            self.data_dict[j][7].setStyleSheet("QLineEdit { background-color: white; }")
+                    self.tL_spinbox.setValue(tmp_tL)
+                    self.tR_spinbox.setValue(tmp_tR)
                     break
             if end == True:
                 self.media_player.pause()
@@ -525,7 +530,7 @@ class CutRange(QMainWindow):
         else:
             raise "还有的没选呢"
         # Combine Ranges
-        t_ranges = combine_ranges(t_ranges, 1.002)
+        t_ranges = combine_ranges(t_ranges, 1.5)
         # Remove Short Noise?
         # Write Ranges to file
         df = pd.DataFrame(t_ranges)
