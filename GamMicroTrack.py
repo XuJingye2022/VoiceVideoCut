@@ -151,10 +151,10 @@ class Gam:
         threads,
         settings,
     ):
-        self.noise_sig_length = 0.5
-        self.pre_t = 0.5
-        self.aft_t = 0.5
-        self.bet_t = 1.001
+        self.noise_sig_length = 0.1
+        self.pre_t = 3
+        self.aft_t = 1
+        self.bet_t = 4.01
         self.speedx = settings["Gam"]["speed"]["speedx"]
         self.cutSetPath = cutSetPath
         self.min_t = 0
@@ -222,7 +222,7 @@ class Gam:
         for i in range(len(t_ranges)-1,-1, -1):
             t1, t2 = t_ranges[i]
             df = df_dB[(t1<=df_dB["time"]) & (df_dB["time"]<=t2)]
-            if np.max(df["dB"]) < 0.2:
+            if np.max(df["dB"]) < 0.01:
                 del t_ranges[i]
         return t_ranges
 
@@ -248,7 +248,7 @@ class Gam:
             df.to_csv(abs_audio_volume_path, index=False)
         # Select volumn data
         self.max_t = max(df["time"])
-        df = df[(df["dB"] > 0.1)]
+        df = df[(df["dB"] > 0.05)]
         df.reset_index(inplace=True, drop=True)
         print(df)
         # Load time and volumn data

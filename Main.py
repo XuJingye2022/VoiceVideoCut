@@ -15,7 +15,7 @@ from GamMicroTrack import combine_ranges
 from small_tools.filemani import get_all_suffixs_files
 
 
-THREADS = 5
+THREADS = 7
 SETTINGS = toml.load("./settings.toml")
 
 class QSSLoader:
@@ -75,6 +75,7 @@ class CutRange(QMainWindow):
         self.widgets_number_per_page = 30
         self.pagenum = 0
         self.widgets_range_per_page = None
+        self.idx_range = range(0, self.widgets_number_per_page)
         
         # ============== Main Window ==============
         super().__init__()
@@ -250,8 +251,9 @@ class CutRange(QMainWindow):
         # Refresh page numbers
         self._refresh_data_numbers_per_page()
         # Get plot range
-        idx_L, idx_R = self.widgets_range_per_page[self.pagenum]
-        for row, idx in enumerate(range(idx_L, idx_R)):
+        idx1, idx2 = self.widgets_range_per_page[self.pagenum]
+        self.idx_range = range(idx1, idx2)
+        for row, idx in enumerate(self.idx_range):
             if len(self.data_dict[idx]) == 1:
                 # Plot hline widgets
                 self.scroll_layout.addWidget(self.data_dict[idx][0], row, 0, 1, 9)
@@ -284,8 +286,7 @@ class CutRange(QMainWindow):
         return [button]
 
     def _add_new_row(self):
-        idx1, idx2 = self.widgets_range_per_page[self.pagenum]
-        for i in range(idx1, idx2):
+        for i in self.idx_range:
             if len(self.data_dict[i]) != 1: continue
             if self.sender() == self.data_dict[i][0]:
                 for j in range(len(self.data_dict)+1, i+1, -1):
@@ -345,11 +346,11 @@ class CutRange(QMainWindow):
                         tR_dcs_btn, line_edit1, tR_ics_btn]
                 
     def _increase_text_and_play_tL_by_key(self):
-        idx1, idx2 = self.widgets_range_per_page[self.pagenum]
-        for i in range(idx1, idx2):
+        for i in self.idx_range:
             if len(self.data_dict[i])==1: continue
             if self.sender() == self.data_dict[i][5]:
                 tL = round(float(self.data_dict[i][4].text())+1, 2)
+                tR = round(float(self.data_dict[i][7].text()), 2)
                 if tL > round(float(self.data_dict[i][7].text())-0.01, 2):
                     print("数值太大")
                 elif (i>1) and (tL < round(float(self.data_dict[i-2][7].text())+0.01, 2)):
@@ -357,14 +358,15 @@ class CutRange(QMainWindow):
                 else:
                     self.data_dict[i][4].setText(str(tL))
                     self.tL_spinbox.setValue(tL)
+                    self.tR_spinbox.setValue(tR)
                     self.media_player.setPosition(int(round(self.tL*1000,2)))
 
     def _decrease_text_and_play_tL_by_key(self):
-        idx1, idx2 = self.widgets_range_per_page[self.pagenum]
-        for i in range(idx1, idx2):
+        for i in self.idx_range:
             if len(self.data_dict[i])==1: continue
             if self.sender() == self.data_dict[i][3]:
                 tL = round(float(self.data_dict[i][4].text())-1, 2)
+                tR = round(float(self.data_dict[i][7].text()), 2)
                 if tL > round(float(self.data_dict[i][7].text())-0.01, 2):
                     print("数值太大")
                 elif (i>1) and (tL < round(float(self.data_dict[i-2][7].text())+0.01, 2)):
@@ -372,13 +374,14 @@ class CutRange(QMainWindow):
                 else:
                     self.data_dict[i][4].setText(str(tL))
                     self.tL_spinbox.setValue(tL)
+                    self.tR_spinbox.setValue(tR)
                     self.media_player.setPosition(int(round(self.tL*1000,2)))
 
     def _increase_text_and_play_tR_by_key(self):
-        idx1, idx2 = self.widgets_range_per_page[self.pagenum]
-        for i in range(idx1, idx2):
+        for i in self.idx_range:
             if len(self.data_dict[i])==1: continue
             if self.sender() == self.data_dict[i][8]:
+                tL = round(float(self.data_dict[i][4].text()), 2)
                 tR = round(float(self.data_dict[i][7].text()), 2) + 1
                 if tR < round(float(self.data_dict[i][4].text()), 2)+0.01:
                     print("数值太小")
@@ -386,14 +389,15 @@ class CutRange(QMainWindow):
                     print("数值太大")
                 else:
                     self.data_dict[i][7].setText(str(tR))
+                    self.tL_spinbox.setValue(tL)
                     self.tR_spinbox.setValue(tR)
-                    self.media_player.setPosition(int(round(max(self.tR-1, self.tL)*1000,2)))
+                    self.media_player.setPosition(int(round(max(self.tR-2, self.tL)*1000,2)))
 
     def _decrease_text_and_play_tR_by_key(self):
-        idx1, idx2 = self.widgets_range_per_page[self.pagenum]
-        for i in range(idx1, idx2):
+        for i in self.idx_range:
             if len(self.data_dict[i])==1: continue
             if self.sender() == self.data_dict[i][6]:
+                tL = round(float(self.data_dict[i][4].text()), 2)
                 tR = round(float(self.data_dict[i][7].text()), 2) - 1
                 if tR < round(float(self.data_dict[i][4].text()), 2)+0.01:
                     print("数值太小")
@@ -401,28 +405,29 @@ class CutRange(QMainWindow):
                     print("数值太大")
                 else:
                     self.data_dict[i][7].setText(str(tR))
+                    self.tL_spinbox.setValue(tL)
                     self.tR_spinbox.setValue(tR)
-                    self.media_player.setPosition(int(round(max(self.tR-1, self.tL)*1000,2)))
+                    self.media_player.setPosition(int(round(max(self.tR-2, self.tL)*1000,2)))
 
     def _tL_select(self):
-        idx1, idx2 = self.widgets_range_per_page[self.pagenum]
-        for i in range(idx1, idx2):
+        for i in self.idx_range:
             if len(self.data_dict[i])==1: continue
             if self.sender() == self.data_dict[i][4]:
                 self.tL_spinbox.setValue(round(float(self.data_dict[i][4].text()), 2))
                 self.tR_spinbox.setValue(round(float(self.data_dict[i][7].text()), 2))
+                self.media_player.setPosition(int(round(self.tL*1000)))
                 self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: gray; }")
                 self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: white; }")
             else:
                 self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: white; }")
                 self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: white; }")
     def _tR_select(self):
-        idx1, idx2 = self.widgets_range_per_page[self.pagenum]
-        for i in range(idx1, idx2):
+        for i in self.idx_range:
             if len(self.data_dict[i])==1: continue
             if self.sender() == self.data_dict[i][7]:
                 self.tL_spinbox.setValue(round(float(self.data_dict[i][4].text()), 2))
                 self.tR_spinbox.setValue(round(float(self.data_dict[i][7].text()), 2))
+                self.media_player.setPosition(int(round(self.tL*1000)))
                 self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: white; }")
                 self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: gray; }")
             else:
