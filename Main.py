@@ -300,12 +300,19 @@ class CutRange(QMainWindow):
                     tL = round(float(self.data_dict[i-1][7].text())+0.01, 2)
                     tR = round(float(self.data_dict[i+3][4].text())-0.01, 2)
                 self.data_dict[i+1] = self._get_data_widgets(tL, tR, "Trans")
-                self.data_dict[i+1][4].setStyleSheet("QLineEdit { background-color: gray; }")
                 # New Line: 2
                 self.data_dict[i] = self._get_hline_widgets()
+                # Plot widgets
                 self._plot_cut_range()
+                # Change color
+                colored_row, colored_col = self.colored_widget
+                self.data_dict[colored_row][colored_col].setStyleSheet("QLineEdit { background-color: white; }")
+                self.data_dict[i+1][4].setStyleSheet("QLineEdit { background-color: gray; }")
+                self.colored_widget = (i+1, 4)
+                # Change video player
                 self.tL_spinbox.setValue(tL)
                 self.tR_spinbox.setValue(tR)
+                self.media_player.setPosition(int(round(self.tL*1000,2)))
                 break
 
     # ============================================================
