@@ -301,20 +301,16 @@ class CutRange(QMainWindow):
                 # New line: 1
                 if i==0:
                     tL = 0
-                    tR = round(float(self.data_dict[i+3][4].text())-0.01, 2)
                 else:
                     tL = round(float(self.data_dict[i-1][7].text())+0.01, 2)
-                    tR = round(float(self.data_dict[i+3][4].text())-0.01, 2)
+                tR = round(float(self.data_dict[i+3][4].text())-0.01, 2)
                 self.data_dict[i+1] = self._get_data_widgets(tL, tR, "Trans")
                 # New Line: 2
                 self.data_dict[i] = self._get_hline_widgets()
                 # Plot widgets
                 self._plot_cut_range()
                 # Change color
-                colored_row, colored_col = self.colored_widget
-                self.data_dict[colored_row][colored_col].setStyleSheet("QLineEdit { background-color: white; }")
-                self.data_dict[i+1][4].setStyleSheet("QLineEdit { background-color: gray; }")
-                self.colored_widget = (i+1, 4)
+                self._change_marked_LineEdit(i+1, 4)
                 # Change video player
                 self.tL_spinbox.setValue(tL)
                 self.tR_spinbox.setValue(tR)
@@ -365,7 +361,7 @@ class CutRange(QMainWindow):
             if self.sender() == self.data_dict[i][5]:
                 tL = round(float(self.data_dict[i][4].text())+1, 2)
                 tR = round(float(self.data_dict[i][7].text()), 2)
-                if tL > round(float(self.data_dict[i][7].text())-0.01, 2):
+                if tL > tR-0.01:
                     print("数值太大")
                 elif (i>1) and (tL < round(float(self.data_dict[i-2][7].text())+0.01, 2)):
                     print("数值太小")
@@ -382,7 +378,7 @@ class CutRange(QMainWindow):
             if self.sender() == self.data_dict[i][3]:
                 tL = round(float(self.data_dict[i][4].text())-1, 2)
                 tR = round(float(self.data_dict[i][7].text()), 2)
-                if tL > round(float(self.data_dict[i][7].text())-0.01, 2):
+                if tL > tR-0.01:
                     print("数值太大")
                 elif (i>1) and (tL < round(float(self.data_dict[i-2][7].text())+0.01, 2)):
                     print("数值太小")
@@ -399,7 +395,7 @@ class CutRange(QMainWindow):
             if self.sender() == self.data_dict[i][8]:
                 tL = round(float(self.data_dict[i][4].text()), 2)
                 tR = round(float(self.data_dict[i][7].text()), 2) + 1
-                if tR < round(float(self.data_dict[i][4].text()), 2)+0.01:
+                if tR < tL+0.01:
                     print("数值太小")
                 elif (i<max(range(len(range(len(self.data_dict.keys())))))) and (tR > round(float(self.data_dict[i+2][4].text()), 2)-0.01):
                     print("数值太大")
@@ -416,7 +412,7 @@ class CutRange(QMainWindow):
             if self.sender() == self.data_dict[i][6]:
                 tL = round(float(self.data_dict[i][4].text()), 2)
                 tR = round(float(self.data_dict[i][7].text()), 2) - 1
-                if tR < round(float(self.data_dict[i][4].text()), 2)+0.01:
+                if tR < tL+0.01:
                     print("数值太小")
                 elif (i<max(range(len(self.data_dict.keys())))) and (tR > round(float(self.data_dict[i+2][4].text()), 2)-0.01):
                     print("数值太大")
@@ -432,10 +428,7 @@ class CutRange(QMainWindow):
             if len(self.data_dict[i])==1: continue
             if self.sender() == self.data_dict[i][4]:
                 # Change color
-                colored_row, colored_col = self.colored_widget
-                self.data_dict[colored_row][colored_col].setStyleSheet("QLineEdit { background-color: white; }")
-                self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: gray; }")
-                self.colored_widget = (i, 4)
+                self._change_marked_LineEdit(i, 4)
                 # Change play position and play range
                 self.tL_spinbox.setValue(round(float(self.data_dict[i][4].text()), 2))
                 self.tR_spinbox.setValue(round(float(self.data_dict[i][7].text()), 2))
@@ -446,10 +439,7 @@ class CutRange(QMainWindow):
             if len(self.data_dict[i])==1: continue
             if self.sender() == self.data_dict[i][7]:
                 # Change color
-                colored_row, colored_col = self.colored_widget
-                self.data_dict[colored_row][colored_col].setStyleSheet("QLineEdit { background-color: white; }")
-                self.data_dict[i][7].setStyleSheet("QLineEdit { background-color: gray; }")
-                self.colored_widget = (i, 7)
+                self._change_marked_LineEdit(i, 7)
                 # Change Play position and play range
                 self.tL_spinbox.setValue(round(float(self.data_dict[i][4].text()), 2))
                 self.tR_spinbox.setValue(round(float(self.data_dict[i][7].text()), 2))
@@ -492,11 +482,7 @@ class CutRange(QMainWindow):
                 tmp_tR = round(float(val[7].text()), 2)
                 if tmp_tL > self.tR:
                     end = False
-                    # Change color
-                    colored_row, colored_col = self.colored_widget
-                    self.data_dict[colored_row][colored_col].setStyleSheet("QLineEdit { background-color: white; }")
-                    self.data_dict[i][4].setStyleSheet("QLineEdit { background-color: gray; }")
-                    self.colored_widget = (i, 4)
+                    self._change_marked_LineEdit(i, 4)
                     # Change video position and play range
                     self.media_player.setPosition(int(round(tmp_tL*1000)))
                     self.tL_spinbox.setValue(tmp_tL)
@@ -618,6 +604,11 @@ class CutRange(QMainWindow):
             self.label_page.setText("%s/%s"%(self.pagenum+1, len(self.widgets_range_per_page)))
             self._plot_cut_range()
 
+    def _change_marked_LineEdit(self, i, j):
+        colored_row, colored_col = self.colored_widget
+        self.data_dict[colored_row][colored_col].setStyleSheet("QLineEdit { background-color: white; }")
+        self.data_dict[i][j].setStyleSheet("QLineEdit { background-color: gray; }")
+        self.colored_widget = (i, j)
 
 def which_line_edit():
     widget = QApplication.focusWidget()
