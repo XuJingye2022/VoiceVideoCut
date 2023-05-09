@@ -86,3 +86,5 @@
     1. 普通的视频播放功能
     2. 在剪切范围内循环
     3. 多个剪切范围依次播放
+
+- [x] For many clipping ranges, the widgets may be too many. So I split them to different pages. But it's still too slow.

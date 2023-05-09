@@ -153,8 +153,8 @@ class Gam:
     ):
         self.noise_sig_length = 0.1
         self.pre_t = 3
-        self.aft_t = 1
-        self.bet_t = 4.01
+        self.aft_t = 0.5
+        self.bet_t = 3.51
         self.speedx = settings["Gam"]["speed"]["speedx"]
         self.cutSetPath = cutSetPath
         self.min_t = 0
