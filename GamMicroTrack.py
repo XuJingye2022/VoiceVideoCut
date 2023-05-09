@@ -5,7 +5,7 @@
 """
 
 import os
-
+import subprocess
 import numpy as np
 import pandas as pd
 
@@ -185,36 +185,6 @@ class Gam:
             res_lst.append(time_lst[-1])
         return res_lst
 
-    def extend_time_until_voice_vanish(self, time_lst, dB_lst, t_ranges: list[tuple]) -> list[tuple]:
-        res_lst = []
-        for t_range in t_ranges:
-            tL, tR = t_range
-            # 将移除两端扩展的时间，变成纯粹采样的时间范围
-            tL += self.pre_t
-            tR -= self.aft_t
-            tmp_time_lst, tmp_dB_lst = select_lists_according_list1(
-                time_lst, dB_lst, lambda x: tL < x < tR         # 删选出时间范围在(tL,tR)范围内的分贝数据
-            )
-
-            if len(tmp_time_lst) < 3:
-                continue  # 长度太短，甚至不用添加进结果列表
-            cond1 = tmp_dB_lst[0] < tmp_dB_lst[1] < tmp_dB_lst[2]
-            cond2 = tmp_dB_lst[-3] > tmp_dB_lst[-2] > tmp_dB_lst[-1]
-            # 音量递增情况
-            if cond1:
-                tmptL = get_zero_point(tmp_time_lst[:3], tmp_dB_lst[:3])
-                if abs(tmptL - tL) < 5:
-                    tL = min(tL, tmptL)
-            # 音量递减情况
-            if cond2:
-                tmptR = get_zero_point(tmp_time_lst[-3:], tmp_dB_lst[-3:])
-                if abs(tmptR - tR) < 5:
-                    tR = max(tR, tmptR)
-            tL -= self.pre_t
-            tR += self.aft_t
-            res_lst.append((max(tL, self.min_t), min(tR, self.max_t)))
-        return res_lst
-
     def remove_dB_small(self, t_ranges, tlst, dBlst):
         df_dB = pd.DataFrame()
         df_dB["time"] = tlst
@@ -225,7 +195,6 @@ class Gam:
             if np.max(df["dB"]) < 0.01:
                 del t_ranges[i]
         return t_ranges
-
 
 
     def get_time_set_to_cut(self, root):
@@ -279,157 +248,61 @@ class Gam:
         df = pd.DataFrame(t_ranges)
         df.to_csv(self.cutSetPath, index=False, header=False)
 
-    def cut_to_preview(self, cutSetPath, cutSetPath_adjusted, recordFolder):
-        """
-        快速预览视频片段。
 
-        `record_root`: 游戏录屏根目录， 里面可能存在多个录屏文件
-        """
-        output_folder = os.path.join(recordFolder, "Preview")
-        # 创建切割素材文件夹
-        if not os.path.exists(output_folder):
-            os.makedirs(output_folder)
+def cut_game_record(record_name, output_name, record_root, nthreads):
+    """
+    `record_name`: 游戏录屏文件, `.mp4`格式.
 
-        # Find video path.
-        _, abs_file_paths = get_all_suffixs_files(recordFolder, [".mp4", ".mkv"])
-        # Load video clip.
-        all_clip = VideoFileClip(abs_file_paths[0])  # 原始录屏文件的clip
-        # Load cut time ranges.
-        df = pd.read_csv(cutSetPath, names=["start", "end"])  # 时间分段文件
-        df_copy = df.copy()
-        clip_lst = []
-        for i in range(0, len(df)):
-            videoName = "%s.mp4"%(str(i).rjust(5, "0"))
-            df_copy.loc[i, "filename"] = videoName
-            output_path = os.path.join(output_folder, videoName)
-            t1, t2 = df.loc[i, :]
-            clip = all_clip.subclip(t1, t2).crossfadein(0.3).crossfadeout(0.3).resize(width=480)
-            clip.write_videofile(output_path, threads=self.threads)
-        # 关闭各个锁定的clip
-        all_clip.close()
-        for clip in clip_lst:
-            clip.close()
-        df_copy["intro"] = False
-        df_copy.to_csv(cutSetPath_adjusted, index=False)
-        
-    def generate_intro_video(self, cutSetPath, recordFolder):
-        output_folder = os.path.join(recordFolder, "Output")
-        path_intro_video = os.path.join(output_folder, "intro.mp4")
+    `output_name`: 输出视频文件.
 
-        if not os.path.exists(output_folder):
-            os.makedirs(output_folder)
+    `record_root`: 游戏录屏根目录， 里面可能存在多个录屏文件
 
-        df = pd.read_csv(cutSetPath)
-        
-        # Find video path.
-        _, abs_file_paths = get_all_suffixs_files(recordFolder, [".mp4", ".mkv"])
-        # Load video clip.
-        all_clip = VideoFileClip(abs_file_paths[0])
-        # Combine intro video
-        clip_lst = []
-        for i in range(0, len(df)):
-            if df.loc[i, "intro"] == True:
-                t1, t2 = df.loc[i, ["start", "end"]]
-                clip_lst.append(all_clip.subclip(t1, t2).crossfadein(0.3).crossfadeout(0.3))
-        # 组合
-        video = concatenate_videoclips(clip_lst)
-        video.write_videofile(path_intro_video, threads=self.threads)
-        # 关闭各个锁定的clip
-        all_clip.close()
-        for clip in clip_lst:
-            clip.close()
-        
+    `nthreads`: 导出线程数.
+    """
+    cut_range_name = record_name.split(".")[0] + "_CutRange.csv"        # 剪辑时间范围的DataFrame. `index=False, headers=False`.
+    cut_range_path = os.path.join(record_root, cut_range_name)          # 剪辑时间范围的完整路径
+    record_path = os.path.join(record_root, record_name)                # 录屏的完整路径
+    output_folder = os.path.join(record_root, "Output")                 # 存放输出视频的文件夹
+    output_path = os.path.join(output_folder, output_name)              # 相应输出视频的完整路径
+    # 创建切割素材文件夹
+    if not os.path.exists(output_folder): os.makedirs(output_folder)
 
+    # Load video clip.
+    all_clip = VideoFileClip(record_path)  # 原始录屏文件的clip
+    # Load cut time ranges.
+    df = pd.read_csv(cut_range_path, names=["start", "end"])
+    clip_lst = []
+    for i in range(0, len(df)):
+        t1, t2 = df.loc[i, ["start","end"]]
+        clip_lst.append(all_clip.subclip(t1, t2).crossfadein(0.3).crossfadeout(0.3))
+    # 组合
+    video = concatenate_videoclips(clip_lst)
+    video.write_videofile(output_path, threads=nthreads)
+    # 关闭各个锁定的clip
+    all_clip.close()
+    for clip in clip_lst: clip.close()
 
-    def adjust_speed_game_record(self, videoName, recordFolder):
-        """
-        根据讲话的时间段，调节游戏录屏速度。
-
-        仅适合单个视频文件。
-        """
-        output_folder = os.path.join(recordFolder, "Output")
-        output_path = os.path.join(output_folder, videoName)
-        # 创建切割素材文件夹
-        if not os.path.exists(output_folder):
-            os.makedirs(output_folder)
-
-        # Find video path.
-        _, abs_file_paths = get_all_suffixs_files(recordFolder, [".mp4", ".mkv"])
-        # Load video clip.
-        all_clip = VideoFileClip(abs_file_paths[0])  # 原始录屏文件的clip
-        # Load cut time ranges.
-        df = pd.read_csv(self.cutSetPath, names=["start", "end"])
-        # Get clip list.
-        t2, t3 = df.loc[0, :]
-        clip_lst = [all_clip.subclip(t2, t3)]
-        for i in range(1, len(df)):
-            t1 = df.loc[i - 1, "end"]
-            t2, t3 = df.loc[i, :]
-            clip = all_clip.subclip(t1, t2)
-            clip = clip.speedx(self.speedx).crossfadein(0.3).crossfadeout(0.3)
-            clip_lst.append(clip)
-            clip = all_clip.subclip(t2, t3)
-            clip_lst.append(clip)
-        # 组合
-        video = concatenate_videoclips(clip_lst)
-        video.write_videofile(output_path, threads=self.threads)
-        # 关闭各个锁定的clip
-        all_clip.close()
-        for clip in clip_lst:
-            clip.close()
-
-
-    def cut_game_record(self, videoName, recordFolder):
-        """
-        `record_root`: 游戏录屏根目录， 里面可能存在多个录屏文件
-        """
-        output_folder = os.path.join(recordFolder, "Output")
-        output_path = os.path.join(output_folder, videoName)
-        # 创建切割素材文件夹
-        if not os.path.exists(output_folder):
-            os.makedirs(output_folder)
-
-        # Find video path.
-        _, abs_file_paths = get_all_suffixs_files(recordFolder, [".mp4", ".mkv"])
-        # Load video clip.
-        all_clip = VideoFileClip(abs_file_paths[0])  # 原始录屏文件的clip
-        # Load cut time ranges.
-        df = pd.read_csv(self.cutSetPath, names=["start", "end"])
-        clip_lst = []
-        for i in range(0, len(df)):
-            t1, t2 = df.loc[i, ["start","end"]]
-            clip_lst.append(all_clip.subclip(t1, t2).crossfadein(0.3).crossfadeout(0.3))
-        # 组合
-        video = concatenate_videoclips(clip_lst)
-        video.write_videofile(output_path, threads=self.threads)
-        # 关闭各个锁定的clip
-        all_clip.close()
-        for clip in clip_lst:
-            clip.close()
+def cut_game_video(record_root):
+    record_names, _ = get_all_suffixs_files(record_root, ".mp4")
+    if len(record_names) == 1:
+        cut_game_record(record_names[0], "output_cut.mp4", record_root, THREADS)
+    else:
+        for i, record_name in enumerate(record_names):
+            cut_game_record(record_name, "%s.mp4"%i, record_root, THREADS)
+        str1 = " ".join(['-i "%s"'%os.path.join(record_root, "Output", str(j)+".mp4") for j in range(len(record_names))])
+        str2 = os.path.join(record_root, "Output", "output_cut.mp4")
+        command = 'ffmpeg %s -codec copy "%s"'%(str1, str2)
+        print(command)
+        subprocess.call(command, shell=True)
 
 
 if __name__ == "__main__":
     # test_microphone(1, 400)
 
-    THREADS = 5                                                                # 导出视频时的线程数
+    THREADS = 7                                                                # 导出视频时的线程数
 
     root = r"F:\Videos\游戏视频\2023-05-01 哪个版本的嘴碎塞尔达最好"
     if not os.path.exists(root):
         print("Error! 不存在指定目录文件夹! 请检查文件设置！"); exit()
 
-    # 文件路径
-    time_range_path = os.path.join(root, "剪辑时间范围.csv")
-
-    game = Gam(time_range_path, THREADS)
-
-    # 1. 将分贝数据转化为剪辑时间范围
-    # 2. 预览，然后自己手动删除"剪辑时间范围.csv"
-    game.get_time_set_to_cut(root)
-    # game.cut_to_preview(time_range_path, time_range_path_adjusted, root)
-    
-    # 剪辑出IntroVideo
-    # game.generate_intro_video(time_range_path_adjusted, root)
-
-    # 剪辑、合成——需要等OBS保存结束
-    # game.cut_game_record("output_cut.mp4", time_range_path, root)
-    # game.adjust_speed_game_record("output_speed.mp4", time_range_path, root)
+    cut_game_video(root)

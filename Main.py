@@ -10,9 +10,10 @@ from small_tools.pic_video_attribution import get_duration
 import pandas as pd
 import toml
 from math import floor
-from GamMicroTrack import Gam
+from GamMicroTrack import Gam, cut_game_record
 from GamMicroTrack import combine_ranges
 from small_tools.filemani import get_all_suffixs_files
+import subprocess
 
 
 THREADS = 7
@@ -28,32 +29,6 @@ class QSSLoader:
             return file.read()
 
 
-class ThreadCut(QThread):
-    """剪切视频的线程
-    """
-    finished = pyqtSignal()
-
-    def __init__(self, game, root):
-        super().__init__()
-        self.game = game
-        self.root = root
-    def run(self):
-        self.game.cut_game_record("output_cut.mp4", self.root)
-        self.finished.emit()
-
-class ThreadSpeed(QThread):
-    """剪切视频的线程
-    """
-    finished = pyqtSignal()
-    def __init__(self, game, root):
-        super().__init__()
-        self.game = game
-        self.root = root
-    def run(self):
-        self.game.adjust_speed_game_record("output_speed.mp4", self.root)
-        self.finished.emit()
-
-
 class CutRange(QMainWindow):
     def __init__(self):
         # ========== 参数 ============
@@ -62,7 +37,7 @@ class CutRange(QMainWindow):
         self.video_h = 675
         self.scroll_area_w = 560
         self.progress_bar_h = 4
-        self.button_w = int(floor(self.video_w-60)/7)
+        self.button_w = int(floor(self.video_w-60)/6)
         self.button_h = 30
         self.window_w = self.video_w + self.scroll_area_w + 30
         self.window_h = self.video_h + self.button_h + 30
@@ -70,8 +45,8 @@ class CutRange(QMainWindow):
         self.mode_h = 30
         # Something will used
         self.root = ""
-        self.output_cut_video = ""
-        self.output_acc_video = ""
+        self.abs_video_path = ""
+        self.output_cut_video = "output_cut.mp4"
         self.speech_range_path = ""
         self.cut_range_path = ""
         self.data_dict = dict()
@@ -135,15 +110,10 @@ class CutRange(QMainWindow):
         self.cut_button1 = QPushButton("Cut", self)
         self.cut_button1.setGeometry(50+4*self.button_w, self.video_h+20, self.button_w, self.button_h)
         self.cut_button1.clicked.connect(self.cut_game_video)
-
-        # ============== Button.6 Cut With Accelerated Silence ==============
-        self.cut_button2 = QPushButton("Acc Cut", self)
-        self.cut_button2.setGeometry(60+5*self.button_w, self.video_h+20, self.button_w, self.button_h)
-        self.cut_button2.clicked.connect(self.acc_game_video)
         
-        # ============== Button.7 Clear Cache ==============
+        # ============== Button.6 Clear Cache ==============
         self.cut_button2 = QPushButton("Clear Cache", self)
-        self.cut_button2.setGeometry(70+6*self.button_w, self.video_h+20, self.button_w, self.button_h)
+        self.cut_button2.setGeometry(60+5*self.button_w, self.video_h+20, self.button_w, self.button_h)
         self.cut_button2.clicked.connect(self.clear_cache)
 
         # ============== Select Mode ===============
@@ -192,12 +162,11 @@ class CutRange(QMainWindow):
         file_dialog.setNameFilter("Video files (*.mp4)")
         if file_dialog.exec():
             filepath = file_dialog.selectedFiles()[0]
+            self.abs_video_path = filepath
             self.root, filename = os.path.split(filepath)
             videoname = filename.split(".")[0]
             self.speech_range_path = os.path.join(self.root, videoname+"_SpeechRange.csv")
-            self.cut_range_path = os.path.join(self.root, videoname+"_CutRange.csv")
-            self.output_cut_video = videoname+"_output_cut.mp4"
-            self.output_acc_video = videoname+"_output_acc.mp4"
+            self.cut_range_path    = os.path.join(self.root, videoname+"_CutRange.csv")
             self.duration = self.tR = get_duration(filepath, SETTINGS)
             self.tL_spinbox.setRange(0, self.duration)
             self.tR_spinbox.setRange(0, self.duration)
@@ -223,7 +192,7 @@ class CutRange(QMainWindow):
         
         if not os.path.exists(self.speech_range_path):
             game = Gam(self.speech_range_path, THREADS, SETTINGS)
-            game.get_time_set_to_cut(self.root)
+            game.get_time_set_to_cut(self.abs_video_path)
         self._load_speech_range_from_file()
 
     """
@@ -309,12 +278,12 @@ class CutRange(QMainWindow):
                 self.data_dict[i] = self._get_hline_widgets()
                 # Plot widgets
                 self._plot_cut_range()
-                # Change color
-                self._change_marked_LineEdit(i+1, 4)
                 # Change video player
                 self.tL_spinbox.setValue(tL)
                 self.tR_spinbox.setValue(tR)
                 self.media_player.setPosition(int(round(self.tL*1000,2)))
+                # Change color
+                self._change_marked_LineEdit(i+1, 4)
                 break
 
     # ============================================================
@@ -370,6 +339,7 @@ class CutRange(QMainWindow):
                     self.tL_spinbox.setValue(tL)
                     self.tR_spinbox.setValue(tR)
                     self.media_player.setPosition(int(round(self.tL*1000,2)))
+                    self._change_marked_LineEdit(i, 4)
                 break
 
     def _decrease_text_and_play_tL_by_key(self):
@@ -387,6 +357,7 @@ class CutRange(QMainWindow):
                     self.tL_spinbox.setValue(tL)
                     self.tR_spinbox.setValue(tR)
                     self.media_player.setPosition(int(round(self.tL*1000,2)))
+                    self._change_marked_LineEdit(i, 4)
                 break
 
     def _increase_text_and_play_tR_by_key(self):
@@ -397,13 +368,15 @@ class CutRange(QMainWindow):
                 tR = round(float(self.data_dict[i][7].text()), 2) + 1
                 if tR < tL+0.01:
                     print("数值太小")
-                elif (i<max(range(len(range(len(self.data_dict.keys())))))) and (tR > round(float(self.data_dict[i+2][4].text()), 2)-0.01):
+                elif (i<len((self.data_dict.keys()))-2) and (tR > round(float(self.data_dict[i+2][4].text()), 2)-0.01):
                     print("数值太大")
                 else:
+                    tR = min(self.duration, tR)
                     self.data_dict[i][7].setText(str(tR))
                     self.tL_spinbox.setValue(tL)
                     self.tR_spinbox.setValue(tR)
                     self.media_player.setPosition(int(round(max(self.tR-2, self.tL)*1000,2)))
+                    self._change_marked_LineEdit(i, 7)
                 break
 
     def _decrease_text_and_play_tR_by_key(self):
@@ -414,36 +387,37 @@ class CutRange(QMainWindow):
                 tR = round(float(self.data_dict[i][7].text()), 2) - 1
                 if tR < tL+0.01:
                     print("数值太小")
-                elif (i<max(range(len(self.data_dict.keys())))) and (tR > round(float(self.data_dict[i+2][4].text()), 2)-0.01):
+                elif (i<len(self.data_dict.keys())-2) and (tR > round(float(self.data_dict[i+2][4].text()), 2)-0.01):
                     print("数值太大")
                 else:
                     self.data_dict[i][7].setText(str(tR))
                     self.tL_spinbox.setValue(tL)
                     self.tR_spinbox.setValue(tR)
                     self.media_player.setPosition(int(round(max(self.tR-2, self.tL)*1000,2)))
+                    self._change_marked_LineEdit(i, 7)
                 break
 
     def _tL_select(self):
         for i in self.idx_range:
             if len(self.data_dict[i])==1: continue
             if self.sender() == self.data_dict[i][4]:
-                # Change color
-                self._change_marked_LineEdit(i, 4)
                 # Change play position and play range
                 self.tL_spinbox.setValue(round(float(self.data_dict[i][4].text()), 2))
                 self.tR_spinbox.setValue(round(float(self.data_dict[i][7].text()), 2))
                 self.media_player.setPosition(int(round(self.tL*1000)))
+                # Change color
+                self._change_marked_LineEdit(i, 4)
                 break
     def _tR_select(self):
         for i in self.idx_range:
             if len(self.data_dict[i])==1: continue
             if self.sender() == self.data_dict[i][7]:
-                # Change color
-                self._change_marked_LineEdit(i, 7)
                 # Change Play position and play range
                 self.tL_spinbox.setValue(round(float(self.data_dict[i][4].text()), 2))
                 self.tR_spinbox.setValue(round(float(self.data_dict[i][7].text()), 2))
                 self.media_player.setPosition(int(round(self.tL*1000)))
+                # Change color
+                self._change_marked_LineEdit(i, 7)
                 break
 
 
@@ -533,27 +507,21 @@ class CutRange(QMainWindow):
         # Remove Short Noise?
         # Write Ranges to file
         df = pd.DataFrame(t_ranges)
-        df.to_csv(os.path.join(self.root, self.videoname+"_CutRange.csv"), index=False, header=False)
+        df.to_csv(self.cut_range_path, index=False, header=False)
 
     def cut_game_video(self):
-        # if self.if_data_saved() == False: return None
         if not os.path.exists(self.cut_range_path): return None
-        # self.change_cut_button1("Cutting...")
-        # game_thread = ThreadCut(Gam(os.path.join(self.root, "CutRange.csv"), THREADS, SETTINGS), self.root)
-        # game_thread.finished.connect(lambda x: self.change_cut_button1("Finished!"))
-        # game_thread.start()
-        game = Gam(self.cut_range_path, THREADS, SETTINGS)
-        game.cut_game_record(self.output_cut_video, self.root)
-
-    def acc_game_video(self):
-        # if self.if_data_saved() == False: return None
-        if not os.path.exists(self.cut_range_path): return None
-        # self.change_cut_button1("Cutting...")
-        # game_thread = ThreadSpeed(Gam(os.path.join(self.root, "CutRange.csv"), THREADS, SETTINGS), self.root)
-        # game_thread.finished.connect(lambda x: self.change_cut_button2("Finished!"))
-        # game_thread.start()
-        game = Gam(self.cut_range_path, THREADS, SETTINGS)
-        game.adjust_speed_game_record(self.output_acc_video, self.root)
+        record_names, record_paths = get_all_suffixs_files(self.root, ".mp4")
+        if len(record_names) == 1:
+            cut_game_record(record_names[0], self.output_cut_video, self.root, THREADS)
+        else:
+            # for i, record_name in enumerate(record_names):
+            #     cut_game_record(record_name, "%s.mp4"%i, self.root, THREADS)
+            str1 = " ".join(['-i "%s"'%os.path.join(self.root, "Output", str(j)+".mp4") for j in range(len(record_names))])
+            str2 = os.path.join(self.root, "Output", self.output_cut_video)
+            command = 'ffmpeg %s -codec copy "%s"'%(str1, str2)
+            print(command)
+            subprocess.call(command, shell=True)
 
     def change_cut_button1(self, text):
         self.cut_button1.setText(text)
@@ -610,6 +578,7 @@ class CutRange(QMainWindow):
         self.data_dict[i][j].setStyleSheet("QLineEdit { background-color: gray; }")
         self.colored_widget = (i, j)
 
+
 def which_line_edit():
     widget = QApplication.focusWidget()
     if isinstance(widget, QLineEdit):
@@ -619,8 +588,8 @@ def which_line_edit():
 
 
 
-
-app = QApplication(sys.argv)
-window = CutRange()
-window.show()
-sys.exit(app.exec())
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = CutRange()
+    window.show()
+    sys.exit(app.exec())
