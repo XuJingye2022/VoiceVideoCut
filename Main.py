@@ -554,15 +554,17 @@ class CutRange(QMainWindow):
         if self.pagenum > 0:
             self.pagenum -= 1
         else:
-            self.pagenum = len(self.widgets_range_per_page)
+            self.pagenum = len(self.widgets_range_per_page)-1
         self.label_page.setText("%s/%s"%(self.pagenum+1, len(self.widgets_range_per_page)))
         self._plot_cut_range()
 
     def _nex_page(self):
         if self.pagenum < len(self.widgets_range_per_page)-1:
             self.pagenum += 1
-            self.label_page.setText("%s/%s"%(self.pagenum+1, len(self.widgets_range_per_page)))
-            self._plot_cut_range()
+        else:
+            self.pagenum = 0
+        self.label_page.setText("%s/%s"%(self.pagenum+1, len(self.widgets_range_per_page)))
+        self._plot_cut_range()
 
     def _change_marked_LineEdit(self, i, j):
         colored_row, colored_col = self.colored_widget
