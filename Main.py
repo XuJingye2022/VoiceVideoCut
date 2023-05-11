@@ -553,8 +553,10 @@ class CutRange(QMainWindow):
     def _pre_page(self):
         if self.pagenum > 0:
             self.pagenum -= 1
-            self.label_page.setText("%s/%s"%(self.pagenum+1, len(self.widgets_range_per_page)))
-            self._plot_cut_range()
+        else:
+            self.pagenum = len(self.widgets_range_per_page)
+        self.label_page.setText("%s/%s"%(self.pagenum+1, len(self.widgets_range_per_page)))
+        self._plot_cut_range()
 
     def _nex_page(self):
         if self.pagenum < len(self.widgets_range_per_page)-1:
