@@ -511,17 +511,7 @@ class CutRange(QMainWindow):
 
     def cut_game_video(self):
         if not os.path.exists(self.cut_range_path): return None
-        record_names, _ = get_all_suffixs_files(self.root, ".mp4")
-        if len(record_names) == 1:
-            cut_game_record(record_names[0], self.output_cut_video, self.root, THREADS)
-        else:
-            for i, record_name in enumerate(record_names):
-                cut_game_record(record_name, "%s.mp4"%i, self.root, THREADS)
-            str1 = " ".join(['-i "%s"'%os.path.join(self.root, "Output", str(j)+".mp4") for j in range(len(record_names))])
-            str2 = os.path.join(self.root, "Output", self.output_cut_video)
-            command = 'ffmpeg %s -codec copy "%s"'%(str1, str2)
-            print(command)
-            subprocess.call(command, shell=True)
+        cut_game_record(self.root, THREADS, individual=False)
 
     def change_cut_button1(self, text):
         self.cut_button1.setText(text)
@@ -550,12 +540,12 @@ class CutRange(QMainWindow):
     #                 return False
     #             else:
     #                 return True
-            
+
     def clear_cache(self):
         if self.root == "":
             QMessageBox.information(self, "Error", "???\nNo video file has selected!")
             return None
-        _, file_list = get_all_suffixs_files(self.root, ".csv")
+        _, file_list = get_all_suffixs_files(self.root, [".csv"])
         for file in file_list:
             if os.path.exists(file):
                 os.remove(file)
