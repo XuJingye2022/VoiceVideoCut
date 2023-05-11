@@ -88,3 +88,5 @@
     3. 多个剪切范围依次播放
 
 - [x] For many clipping ranges, the widgets may be too many. So I split them to different pages. But it's still too slow.
+
+- [ ] There is a bug when after add new rows
