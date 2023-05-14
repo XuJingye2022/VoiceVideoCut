@@ -34,24 +34,6 @@ def seconds_to_hms(seconds):
     # 返回结果
     return hours, minutes, seconds
 
-def combine_sets(set1, set2):
-    """利用set2连续地扩充set1.
-
-    如果无法连续,原样返回
-    """
-    x_l, x_r = set1
-    a2, b2 = set2
-    if (b2 <= x_l) or (a2 >= x_r):
-        return (x_l, x_r)
-    if a2 <= x_l <= b2 <= x_r:
-        return (a2, x_r)
-    if x_l <= a2 <= x_r <= b2:
-        return (x_l, b2)
-    if (a2 <= x_l) and (b2 >= x_r):
-        return (a2, b2)
-    if (x_l <= a2) and (b2 <= x_r):
-        return (x_l, x_r)
-
 
 def combine_ranges(t_ranges: list[tuple], t_error):
     """结合各个比较近的时间范围
@@ -68,22 +50,6 @@ def combine_ranges(t_ranges: list[tuple], t_error):
             pre_t2 = t2
     res_lst.append((pre_t1, pre_t2))
     return res_lst
-
-
-def select_lists_according_list1(lst1: list, lst2: list, cri_fun):
-    res_lst1, res_lst2 = [], []
-    for x, y in zip(lst1, lst2):
-        if cri_fun(x):
-            res_lst1.append(x)
-            res_lst2.append(y)
-    return res_lst1, res_lst2
-
-
-def get_zero_point(xlist: list, ylist: list):
-    x1, x2, x3 = xlist
-    y1, y2, y3 = ylist
-    k = (y3 - y2) / (x3 - x2)
-    return 0.5 * (x1 - y1 / k + x2 - y2 / k)
 
 
 def get_all_suffixs_files(root: str, suffixs: list) -> tuple[list]:
@@ -151,10 +117,11 @@ class Gam:
         threads,
         settings,
     ):
-        self.noise_sig_length = 0.1
-        self.pre_t = 3.1
-        self.aft_t = 0.1
-        self.bet_t = 3.21
+        self.noise_sig_length = 0.5
+        self.growth_or_decay_time_of_voice = 0.5
+        self.pre_t = 0
+        self.aft_t = 0
+        self.bet_t = self.pre_t + self.aft_t + 2 * self.growth_or_decay_time_of_voice + 0.01
         self.speedx = settings["Gam"]["speed"]["speedx"]
         self.cutSetPath = cutSetPath
         self.min_t = 0
@@ -165,7 +132,7 @@ class Gam:
 
     def from_tpoints_to_tranges(self, tlst: list) -> list[tuple]:
         return [
-            (max(self.min_t, t - self.pre_t), min(self.max_t, t + self.aft_t))
+            (max(self.min_t, t - self.growth_or_decay_time_of_voice), min(self.max_t, t + self.growth_or_decay_time_of_voice))
             for t in tlst
         ]
 
@@ -215,9 +182,8 @@ class Gam:
             df.to_csv(abs_audio_volume_path, index=False)
         # Select volumn data
         self.max_t = max(df["time"])
-        df = df[(df["dB"] > 0.05)]
+        df = df[(df["dB"] > 0.1)]
         df.reset_index(inplace=True, drop=True)
-        print(df)
         # Load time and volumn data
         t_lst = list(df["time"])
         dB_lst = list(df["dB"])
@@ -227,7 +193,10 @@ class Gam:
         t_lst_remove_noise = self.remove_noise(t_lst)
         # 2. Transform time point to time range
         t_ranges = self.from_tpoints_to_tranges(t_lst_remove_noise)
-        # 3. Combine time range, with speech gap:
+        # 3. Combine time range, get Speech Ranges:
+        t_ranges = combine_ranges(t_ranges, 2*self.growth_or_decay_time_of_voice + 0.01)
+        # 4. Expand ranges and Combine
+        t_ranges = [(max(self.min_t, a-self.pre_t), min(self.max_t, b+self.aft_t)) for a, b in t_ranges]
         t_ranges = combine_ranges(t_ranges, self.bet_t - self.aft_t - self.pre_t)
         # 4. 去除没有说话的部分——通过分贝数全程没有超过某个阈值判断
         t_ranges = self.remove_dB_small(t_ranges, t_lst, dB_lst)
@@ -342,9 +311,9 @@ def cut_game_record(root, nthreads, individual=False):
 if __name__ == "__main__":
     # test_microphone(1, 400)
 
-    THREADS = 7                                                                # 导出视频时的线程数
+    THREADS = 8                                                             # 导出视频时的线程数
 
-    root = r"E:\游戏视频\2023-05-10 【旷野之息】通关准备工作、救出水神兽、抵达主殿"
+    root = r"E:\游戏视频\2023-05-12 【王国之泪】P2 风之神殿"
     if not os.path.exists(root):
         print("Error! 不存在指定目录文件夹! 请检查文件设置！"); exit()
 

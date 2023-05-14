@@ -14,7 +14,8 @@ from GamMicroTrack import Gam, cut_game_record
 from GamMicroTrack import combine_ranges
 from small_tools.filemani import get_all_suffixs_files
 import subprocess
-
+import threading
+from time import time
 
 THREADS = 7
 SETTINGS = toml.load("./settings.toml")
@@ -55,6 +56,7 @@ class CutRange(QMainWindow):
         self.pagenum = 0
         self.widgets_range_per_page = None
         self.idx_range = range(0, self.widgets_number_per_page)
+        self.idx_play_now = 0       # idx of video playing
         self.colored_widget = (0, 0)
         
         # ============== Main Window ==============
@@ -407,6 +409,7 @@ class CutRange(QMainWindow):
                 self.media_player.setPosition(int(round(self.tL*1000)))
                 # Change color
                 self._change_marked_LineEdit(i, 4)
+                self.idx_play_now = i
                 break
     def _tR_select(self):
         for i in self.idx_range:
@@ -418,6 +421,7 @@ class CutRange(QMainWindow):
                 self.media_player.setPosition(int(round(self.tL*1000)))
                 # Change color
                 self._change_marked_LineEdit(i, 7)
+                self.idx_play_now = i
                 break
 
 
@@ -443,27 +447,34 @@ class CutRange(QMainWindow):
         cond1 = position > self.tR*1000
         cond2 = position < self.tL*1000
         if self.mode0.isChecked() and (cond1 or cond2):
+            self.media_player.pause()
+            self.play_button.setText('PLAY')
             self.media_player.setPosition(int(round(self.tL*1000)))
-            print("更改播放范围为： ", self.tL, " ", self.tR)
         elif self.mode1.isChecked() and (cond1 or cond2):
             self.tL_spinbox.setValue(round(0, 2))
             self.tR_spinbox.setValue(round(self.duration, 2))
         elif self.mode2.isChecked() and cond1:
-            end = True
-            for i, val in enumerate(self.data_dict.values()):
-                if len(self.data_dict[i])==1: continue
-                tmp_tL = round(float(val[4].text()), 2)
-                tmp_tR = round(float(val[7].text()), 2)
-                if tmp_tL > self.tR:
-                    end = False
+            tmp_total_widgets_num = len(self.data_dict)
+            if self.idx_play_now == tmp_total_widgets_num:
+                self.media_player.pause()
+                self.play_button.setText('PLAY')
+            for i in range(self.idx_play_now, tmp_total_widgets_num, 2):
+                val = self.data_dict[i]
+                if val[2].isChecked():
+                    # 判断为Noise的直接跳过
+                    continue
+                else:
+                    tmp_tL = round(float(val[4].text()), 2)
+                    if tmp_tL <= self.tR:
+                        continue
+                    tmp_tR = round(float(val[7].text()), 2)
                     self._change_marked_LineEdit(i, 4)
                     # Change video position and play range
                     self.media_player.setPosition(int(round(tmp_tL*1000)))
                     self.tL_spinbox.setValue(tmp_tL)
                     self.tR_spinbox.setValue(tmp_tR)
+                    print("更改播放范围为： ", self.tL, " ", self.tR)
                     break
-            if end == True:
-                self.media_player.pause()
         elif self.mode2.isChecked() and cond2:
             self.media_player.setPosition(int(round(self.tL*1000)))
             
@@ -479,35 +490,8 @@ class CutRange(QMainWindow):
     ======================== Connect to the Button 4 ============================
     """
     def save_new_range(self):
-        df = pd.DataFrame(columns=["Start Time", "End Time"])
-        all_choose = True
-        t_ranges = []
-        for i in range(len(self.data_dict.keys())):
-            if len(self.data_dict[i])==1: continue
-            if self.data_dict[i][0].isChecked():
-                t1 = round(float(self.data_dict[i][4].text()),2)
-                t2 = round(float(self.data_dict[i][7].text()),2)
-                t_ranges.append((t1, t2))
-            elif self.data_dict[i][1].isChecked():
-                t1 = round(float(self.data_dict[i][4].text()),2)
-                t2 = round(float(self.data_dict[i][7].text()),2)
-                t_ranges.append((t1, t2))
-            elif self.data_dict[i][2].isChecked():
-                continue
-            else:
-                all_choose = False
-
-        if all_choose==True:
-            if self.root == "":
-                raise "先指定视频文件"
-        else:
-            raise "还有的没选呢"
-        # Combine Ranges
-        t_ranges = combine_ranges(t_ranges, 1.5)
-        # Remove Short Noise?
-        # Write Ranges to file
-        df = pd.DataFrame(t_ranges)
-        df.to_csv(self.cut_range_path, index=False, header=False)
+        p = threading.Thread(target=_save_new_range, args=(self.data_dict, self.root, self.cut_range_path))
+        p.start()
 
     def cut_game_video(self):
         if not os.path.exists(self.cut_range_path): return None
@@ -573,14 +557,36 @@ class CutRange(QMainWindow):
         self.colored_widget = (i, j)
 
 
-def which_line_edit():
-    widget = QApplication.focusWidget()
-    if isinstance(widget, QLineEdit):
-        print("The current QLineEdit is:", widget.objectName())
-    else:
-        print("No QLineEdit has focus.")
+def _save_new_range(data_dict, root, cut_range_path):
+    df = pd.DataFrame(columns=["Start Time", "End Time"])
+    all_choose = True
+    t_ranges = []
+    for i in range(len(data_dict.keys())):
+        if len(data_dict[i])==1: continue
+        if data_dict[i][0].isChecked():
+            t1 = round(float(data_dict[i][4].text()),2)
+            t2 = round(float(data_dict[i][7].text()),2)
+            t_ranges.append((t1, t2))
+        elif data_dict[i][1].isChecked():
+            t1 = round(float(data_dict[i][4].text()),2)
+            t2 = round(float(data_dict[i][7].text()),2)
+            t_ranges.append((t1, t2))
+        elif data_dict[i][2].isChecked():
+            continue
+        else:
+            all_choose = False
 
-
+    if all_choose==True:
+        if root == "":
+            print("先指定视频文件")
+            return
+    # Combine Ranges
+    t_ranges = combine_ranges(t_ranges, 1)
+    # Remove Short Noise?
+    # Write Ranges to file
+    df = pd.DataFrame(t_ranges)
+    df.to_csv(cut_range_path, index=False, header=False)
+    print("Save cut range successfully!")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
