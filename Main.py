@@ -436,7 +436,7 @@ class CutRange(QMainWindow):
 
 
     """
-    ================== Connect to the Button 3. ===================
+    ================== Connect to the Button 3 and 5. ===================
     """
     def previous_range(self):
         if self.idx_play_now == 1:
@@ -489,7 +489,9 @@ class CutRange(QMainWindow):
                 break
 
 
-
+    """
+    ================== Connect to the Button 4. ===================
+    """
     def play_video(self):
         if self.root == "":
             QMessageBox.information(self, "Error", "???\nNo video file has selected!")
@@ -549,7 +551,7 @@ class CutRange(QMainWindow):
 
 
     """
-    ======================== Connect to the Button 4 ============================
+    ======================== Connect to the Button 6 ============================
     """
     def save_new_range(self):
         p = threading.Thread(target=_save_new_range, args=(self.data_dict, self.root, self.cut_range_path))
@@ -587,6 +589,9 @@ class CutRange(QMainWindow):
     #             else:
     #                 return True
 
+    """
+    ================== Connect to the Button 7. ===================
+    """
     def clear_cache(self):
         if self.root == "":
             QMessageBox.information(self, "Error", "???\nNo video file has selected!")

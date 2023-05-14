@@ -90,3 +90,4 @@
 - [x] For many clipping ranges, the widgets may be too many. So I split them to different pages. But it's still too slow.
 
 - [ ] There is a bug when after add new rows
+- [ ] 现在的问题是，如果讲话范围太短，它播放没多久，就会切换到下一个片段。有时它会卡顿，甚至界面卡住。
