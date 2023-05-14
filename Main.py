@@ -38,7 +38,7 @@ class CutRange(QMainWindow):
         self.video_h = 675
         self.scroll_area_w = 560
         self.progress_bar_h = 4
-        self.button_w = int(floor(self.video_w-60)/6)
+        self.button_w = int(floor(self.video_w-70)/8)
         self.button_h = 30
         self.window_w = self.video_w + self.scroll_area_w + 30
         self.window_h = self.video_h + self.button_h + 30
@@ -98,24 +98,34 @@ class CutRange(QMainWindow):
         self.analyze_button.setGeometry(20+self.button_w, self.video_h+20, self.button_w, self.button_h)
         self.analyze_button.clicked.connect(self.analyze_video)
 
-        # ============== Button.3 PLAY/STOP video ==============
+        # ============== Button.3 Previous Range ==============
+        self.prev_range_button = QPushButton("PREV", self)
+        self.prev_range_button.setGeometry(30+2*self.button_w, self.video_h+20, self.button_w, self.button_h)
+        self.prev_range_button.clicked.connect(self.previous_range)
+
+        # ============== Button.4 PLAY/STOP video ==============
         self.play_button = QPushButton("STOP", self)
-        self.play_button.setGeometry(30+2*self.button_w, self.video_h+20, self.button_w, self.button_h)
+        self.play_button.setGeometry(40+3*self.button_w, self.video_h+20, self.button_w, self.button_h)
         self.play_button.clicked.connect(self.play_video)
 
-        # ============== Button.4 Export Cut Range ==============
+        # ============== Button.5 Next Range ==============
+        self.next_range_button = QPushButton("NEXT", self)
+        self.next_range_button.setGeometry(50+4*self.button_w, self.video_h+20, self.button_w, self.button_h)
+        self.next_range_button.clicked.connect(self.next_range)
+
+        # ============== Button.6 Export Cut Range ==============
         self.save_button = QPushButton("Save New Range", self)
-        self.save_button.setGeometry(40+3*self.button_w, self.video_h+20, self.button_w, self.button_h)
+        self.save_button.setGeometry(60+5*self.button_w, self.video_h+20, self.button_w, self.button_h)
         self.save_button.clicked.connect(self.save_new_range)
 
-        # ============== Button.5 Cut Without Silence ==============
+        # ============== Button.7 Cut Without Silence ==============
         self.cut_button1 = QPushButton("Cut", self)
-        self.cut_button1.setGeometry(50+4*self.button_w, self.video_h+20, self.button_w, self.button_h)
+        self.cut_button1.setGeometry(70+6*self.button_w, self.video_h+20, self.button_w, self.button_h)
         self.cut_button1.clicked.connect(self.cut_game_video)
         
-        # ============== Button.6 Clear Cache ==============
+        # ============== Button.8 Clear Cache ==============
         self.cut_button2 = QPushButton("Clear Cache", self)
-        self.cut_button2.setGeometry(60+5*self.button_w, self.video_h+20, self.button_w, self.button_h)
+        self.cut_button2.setGeometry(80+7*self.button_w, self.video_h+20, self.button_w, self.button_h)
         self.cut_button2.clicked.connect(self.clear_cache)
 
         # ============== Select Mode ===============
@@ -428,6 +438,58 @@ class CutRange(QMainWindow):
     """
     ================== Connect to the Button 3. ===================
     """
+    def previous_range(self):
+        if self.idx_play_now == 1:
+            self.media_player.pause()
+            self.play_button.setText('PLAY')
+            print("已经到头")
+            return
+        for i in range(self.idx_play_now-2, 0, -2):
+            val = self.data_dict[i]
+            if val[2].isChecked():
+                # 判断为Noise的直接跳过
+                continue
+            else:
+                tmp_tL = round(float(val[4].text()), 2)
+                tmp_tR = round(float(val[7].text()), 2)
+                self._change_marked_LineEdit(i, 4)
+                # Change video position and play range
+                self.media_player.setPosition(int(round(tmp_tL*1000)))
+                self.tL_spinbox.setValue(tmp_tL)
+                self.tR_spinbox.setValue(tmp_tR)
+                self.idx_play_now = i
+                print("更改播放范围为： ", self.tL, " ", self.tR)
+                self.media_player.play()
+                self.play_button.setText('STOP')
+                break
+
+    def next_range(self):
+        tmp_total_widgets_num = len(self.data_dict)
+        if self.idx_play_now == tmp_total_widgets_num-1:
+            self.media_player.pause()
+            self.play_button.setText('PLAY')
+            return
+        for i in range(self.idx_play_now+2, tmp_total_widgets_num, 2):
+            val = self.data_dict[i]
+            if val[2].isChecked():
+                # 判断为Noise的直接跳过
+                continue
+            else:
+                tmp_tL = round(float(val[4].text()), 2)
+                tmp_tR = round(float(val[7].text()), 2)
+                self._change_marked_LineEdit(i, 4)
+                # Change video position and play range
+                self.media_player.setPosition(int(round(tmp_tL*1000)))
+                self.tL_spinbox.setValue(tmp_tL)
+                self.tR_spinbox.setValue(tmp_tR)
+                self.idx_play_now = i
+                print("更改播放范围为： ", self.tL, " ", self.tR)
+                self.media_player.play()
+                self.play_button.setText('STOP')
+                break
+
+
+
     def play_video(self):
         if self.root == "":
             QMessageBox.information(self, "Error", "???\nNo video file has selected!")
@@ -455,9 +517,10 @@ class CutRange(QMainWindow):
             self.tR_spinbox.setValue(round(self.duration, 2))
         elif self.mode2.isChecked() and cond1:
             tmp_total_widgets_num = len(self.data_dict)
-            if self.idx_play_now == tmp_total_widgets_num:
+            if self.idx_play_now == tmp_total_widgets_num-1:
                 self.media_player.pause()
                 self.play_button.setText('PLAY')
+                return
             for i in range(self.idx_play_now, tmp_total_widgets_num, 2):
                 val = self.data_dict[i]
                 if val[2].isChecked():
@@ -465,14 +528,13 @@ class CutRange(QMainWindow):
                     continue
                 else:
                     tmp_tL = round(float(val[4].text()), 2)
-                    if tmp_tL <= self.tR:
-                        continue
                     tmp_tR = round(float(val[7].text()), 2)
                     self._change_marked_LineEdit(i, 4)
                     # Change video position and play range
                     self.media_player.setPosition(int(round(tmp_tL*1000)))
                     self.tL_spinbox.setValue(tmp_tL)
                     self.tR_spinbox.setValue(tmp_tR)
+                    self.idx_play_now = i
                     print("更改播放范围为： ", self.tL, " ", self.tR)
                     break
         elif self.mode2.isChecked() and cond2:
