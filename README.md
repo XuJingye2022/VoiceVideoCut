@@ -55,17 +55,15 @@
 7. 通过`Open Video File`选择视频文件.
    
 8. 点击`Analyze`分析人声的范围.
-   * 当持续时间小于0.5s会被认为是噪声并删除掉.
+   * 当持续时间小于0.5s会被认为是噪声并删除掉——你可以在`GamMicroTrack.py`的120行更改设置.
    * 如果视频目录存在`SpeechRange.csv`, 将会直接读取. 想删除的话可以点击`Clear Cache`删除所有缓存文件.
    
 9. 通过点击4个`-/+`符号, 调整剪辑片段的左右边界.
     如果你觉得这个片段不需要, 可以选择`Noise`单选框.
     你可以通过点击文本框(有时单机有时双击), 预览视频.
 10. 点击`Save New Range`保存剪辑范围到`CutRange.csv`. 再次点击`Analyze`, 就会加载`CutRange.csv`到编辑列表. 如果你不满意, 或者程序崩溃了, 只要`CutRange.csv`存在, 就可以继续编辑.
-11. 通过点击`Cut`或者`Acc Cut`剪辑视频:
-    * `Cut`意味着删除剪辑范围之外的片段;
-    * `Acc Cut`意味着加速剪辑范围之外的片段.
-12. 点击`Clear Cache`清楚所有缓存文件.
+11. 通过点击`Cut`剪辑视频。`Cut`意味着删除剪辑范围之外的片段;
+1.  点击`Clear Cache`清楚所有缓存文件.
 
 
 # Some Problem
@@ -89,5 +87,10 @@
 
 - [x] For many clipping ranges, the widgets may be too many. So I split them to different pages. But it's still too slow.
 
-- [ ] There is a bug when after add new rows
-- [ ] 现在的问题是，如果讲话范围太短，它播放没多久，就会切换到下一个片段。有时它会卡顿，甚至界面卡住。
+- [ ] There is a bug when after add new rows. 有时翻到最后一页，它在画控件布局的时候，会说越界了。但是重新加载剪辑时间范围，就没有这个问题。
+
+- [ ] 配合[Whisper](https://github.com/openai/whisper) or [autocut](https://github.com/dorgonman/autocut)，展示字幕文件
+
+- [ ] 现在的问题是：
+  1. 如果讲话范围太短，它播放没多久，就会切换到下一个片段。有时它会卡顿，甚至界面卡住。具体可以看`Main.py`文件中304行`_get_data_widgets`这个函数。其中337行：`Preview`模式下（右上角QRadioButton），我主动双击文本框，触发`_tL_select/_tR_select`时，有时片段太短的话，它会播放完这个片段，甚至以及下个片段，才有可能触发，响应特别慢（甚至我想切换上面的`Preview`模式为`Loop`它都无法立马响应）；稍微长的片段还是没问题的。文本颜色改变的速度也比较慢，有时声音都播放结束了，它才变色，可能因此导致有些片段会播放两次。大概是由于单线程，切换范围的时候，主界面有时会卡顿到出现“未响应”大概0.5s。
+  2. 另外，我的`Main.py`的162行，这个用法导致`scroll_widget`无法实现滚动，但是不这么用又无法正常显示，总之目前这么勉强运行着。

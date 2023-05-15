@@ -313,7 +313,7 @@ if __name__ == "__main__":
 
     THREADS = 8                                                             # 导出视频时的线程数
 
-    root = r"E:\游戏视频\2023-05-12 【王国之泪】P2 风之神殿"
+    root = r"E:\游戏视频\XXXXX"
     if not os.path.exists(root):
         print("Error! 不存在指定目录文件夹! 请检查文件设置！"); exit()
 

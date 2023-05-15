@@ -303,10 +303,14 @@ class CutRange(QMainWindow):
     # ============================================================
     def _get_data_widgets(self, tL, tR, typestr):
         buttongroup = QButtonGroup(self)
+        # radiobutton0: 通过前面`_add_new_row`新加入的过渡段
+        # radiobutton1: 有语音的时间段
+        # radiobutton2: 要舍弃的垃圾片段
         radiobutton0 = QRadioButton(f"Trans", self.scroll_widget); buttongroup.addButton(radiobutton0)
         radiobutton1 = QRadioButton(f"Chat", self.scroll_widget); buttongroup.addButton(radiobutton1)
+        # 判断为"Trans"或者"Chat"，你不能选择"Chat"或者"Trans"
         if typestr == "Chat":
-            radiobutton0.setEnabled(False)  # 这个按钮暂时不需要
+            radiobutton0.setEnabled(False)
             radiobutton1.setChecked(True)
         else:
             radiobutton0.setChecked(True)
@@ -316,7 +320,7 @@ class CutRange(QMainWindow):
         line_edit1 = QLineEdit(str(tR), self.scroll_widget)
         line_edit0.setFixedWidth(80)
         line_edit1.setFixedWidth(80)
-        # 音量减小增加键
+        # 时间范围上/下限的减小/增加键
         tL_dcs_btn = QPushButton("-1", self)
         tL_dcs_btn.setFixedSize(25, 25)
         tL_dcs_btn.clicked.connect(self._decrease_text_and_play_tL_by_key)
@@ -523,7 +527,7 @@ class CutRange(QMainWindow):
                 self.media_player.pause()
                 self.play_button.setText('PLAY')
                 return
-            for i in range(self.idx_play_now, tmp_total_widgets_num, 2):
+            for i in range(self.idx_play_now+2, tmp_total_widgets_num, 2):
                 val = self.data_dict[i]
                 if val[2].isChecked():
                     # 判断为Noise的直接跳过
