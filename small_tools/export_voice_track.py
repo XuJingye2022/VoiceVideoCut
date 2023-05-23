@@ -10,9 +10,9 @@ def get_second_track(path):
     """
     root, _ = os.path.split(path)
     audiopath = os.path.join(root,"microphone_audio.mp3")
-    command = 'ffmpeg -i "%s" -map 0:a:1 "%s"'%(path, audiopath)
+    command = 'ffmpeg -i "%s" -map 0:a:1? "%s"'%(path, audiopath)
     subprocess.call(command, shell=True)
     return audiopath
 
 if __name__ == "__main__":
-    get_second_track(r"E:\游戏视频\2023-04-29 剪辑速率测试\2023-04-29 16-41-13.mkv")
+    get_second_track("E:/游戏视频/2023-05-11 【王国之泪】P01 到达海拉鲁大地/Output/output_cut.mp4")

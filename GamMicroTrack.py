@@ -12,27 +12,8 @@ import pandas as pd
 from moviepy.editor import VideoFileClip, concatenate_videoclips
 from small_tools.get_dB_from_mp3 import get_dB_from_video
 from multipledispatch import dispatch, variadic
-
-def change_suffix(s: str, new_post_fix: str):
-    """更改字符串的后缀
-    
-    Param
-    ---
-    s: 包含后缀的路径或者文件名.
-
-    new_post_fix: 不包含`.`的新文件后缀.
-    """
-    lst = s.split(".")
-    lst[-1] = new_post_fix
-    return ".".join(lst)
-
-def seconds_to_hms(seconds):
-    # 计算小时数和余数
-    hours, remainder = divmod(seconds, 3600)
-    # 计算分钟数和秒数
-    minutes, seconds = divmod(remainder, 60)
-    # 返回结果
-    return hours, minutes, seconds
+from small_tools.second_to_hms import seconds_to_hms
+from small_tools.filemani import change_suffix
 
 
 def combine_ranges(t_ranges: list[tuple], t_error):
@@ -41,8 +22,16 @@ def combine_ranges(t_ranges: list[tuple], t_error):
     `t_error`: 时间范围之间的最大容许距离
     """
     pre_t1, pre_t2 = t_ranges[0]
+    if pre_t1 > pre_t2:
+        print(f"Cut range error: {pre_t1} and {pre_t2}")
+        return None
+
     res_lst = []
     for t1, t2 in t_ranges:
+        if t1 >= t2:
+            print(f"Cut range error: {t1} and {t2}")
+            return None
+
         if t1 > pre_t2 + t_error:
             res_lst.append((pre_t1, pre_t2))
             pre_t1, pre_t2 = t1, t2
@@ -107,7 +96,7 @@ def get_clip(cut_range, all_videos, all_length, cumsum_length):
             clip1 = clip1.subclip(a, all_length[i])
             clip2 = VideoFileClip(all_videos[i + 1])
             clip2 = clip2.subclip(0, b)
-            return concatenate_videoclips([clip1, clip2])
+            return concatenate_videoclips([clip1, clip2], method="chain")
 
 
 class Gam:
@@ -242,8 +231,9 @@ def cut_game_video_single_file(record_name, output_name, record_root, nthreads):
     for i in range(0, len(df)):
         t1, t2 = df.loc[i, ["start","end"]]
         clip_lst.append(all_clip.subclip(t1, t2).crossfadein(0.3).crossfadeout(0.3))
+    print([clip.duration for clip in clip_lst][-10:])
     # 组合
-    video = concatenate_videoclips(clip_lst)
+    video = concatenate_videoclips(clip_lst, method="chain")
     video.write_videofile(output_path, threads=nthreads)
     # 关闭各个锁定的clip
     all_clip.close()
@@ -255,12 +245,14 @@ def cut_game_video_multifile_individual(record_root, nthreads):
 
     `nthreads`: 导出线程数.
     """
-    record_names, _ = get_all_suffixs_files(record_root, [".mkv"])
+    record_names, _ = get_all_suffixs_files(record_root, [".mp4"])
     if len(record_names) == 1:
-        cut_game_video_single_file(record_names[0], "output_cut.mkv", record_root, nthreads)
+        cut_game_video_single_file(record_names[0], "output_cut.mp4", record_root, nthreads)
     else:
         for i, record_name in enumerate(record_names):
-            cut_game_video_single_file(record_name, "%s.mkv"%i, record_root, nthreads)
+            if i==0: continue # 跳过第一个文件
+            print(i, " ", record_name)
+            cut_game_video_single_file(record_name, "%s.mp4"%i, record_root, nthreads)
         str1 = " ".join(['-i "%s"'%os.path.join(record_root, "Output", str(j)+".mp4") for j in range(len(record_names))])
         str2 = os.path.join(record_root, "Output", "output_cut.mp4")
         command = 'ffmpeg %s -codec copy "%s"'%(str1, str2)
@@ -274,12 +266,11 @@ def cut_game_video_multifile_together(record_root, nthreads):
     `nthreads`: 导出线程数.
     """
     output_folder = os.path.join(record_root, "Output")                 # 存放输出视频的文件夹
-    output_path = os.path.join(output_folder, "output_cut.mp4")              # 相应输出视频的完整路径
+    output_path = os.path.join(output_folder, "output_cut.mp4")         # 相应输出视频的完整路径
     # 创建切割素材文件夹
     if not os.path.exists(output_folder): os.makedirs(output_folder)
 
-    record_names, _ = get_all_suffixs_files(record_root, [".mkv"])
-    print(record_names)
+    record_names, _ = get_all_suffixs_files(record_root, [".mp4"])
     clip_lst = []
     for i, record_name in enumerate(record_names):
         print(record_name)
@@ -296,11 +287,12 @@ def cut_game_video_multifile_together(record_root, nthreads):
             t1, t2 = df.loc[i, ["start","end"]]
             clip_lst.append(all_clip.subclip(t1, t2).crossfadein(0.3).crossfadeout(0.3))
     # 组合
-    video = concatenate_videoclips(clip_lst)
+    video = concatenate_videoclips(clip_lst, method="chain")
     video.write_videofile(output_path, threads=nthreads)
     # 关闭各个锁定的clip
     all_clip.close()
     for clip in clip_lst: clip.close()
+        
 
 def cut_game_record(root, nthreads, individual=False):
     if individual==False:
@@ -311,10 +303,11 @@ def cut_game_record(root, nthreads, individual=False):
 if __name__ == "__main__":
     # test_microphone(1, 400)
 
-    THREADS = 8                                                             # 导出视频时的线程数
+    THREADS = 7                                                            # 导出视频时的线程数
 
-    root = r"E:\游戏视频\XXXXX"
+    root = r"E:\游戏视频\2023-05-11 【王国之泪】P01 到达海拉鲁大地"
     if not os.path.exists(root):
         print("Error! 不存在指定目录文件夹! 请检查文件设置！"); exit()
 
-    cut_game_record(root, THREADS)
+    # cut_game_record(root, THREADS)
+    cut_game_video_single_file("2023-05-11 23-12-48.mkv", "1.mp4", r"E:\游戏视频\2023-05-11 【王国之泪】P01 到达海拉鲁大地", THREADS)
