@@ -13,8 +13,11 @@ from moviepy.editor import VideoFileClip, concatenate_videoclips
 from small_tools.get_dB_from_mp3 import get_dB_from_video
 from multipledispatch import dispatch, variadic
 from small_tools.second_to_hms import seconds_to_hms
-from small_tools.filemani import change_suffix
+from small_tools.filemani import change_suffix, get_all_suffixs_files
+import toml
 
+THREADS = 4
+SETTINGS = toml.load("./settings.toml")
 
 def combine_ranges(t_ranges: list[tuple], t_error):
     """结合各个比较近的时间范围
@@ -39,31 +42,6 @@ def combine_ranges(t_ranges: list[tuple], t_error):
             pre_t2 = t2
     res_lst.append((pre_t1, pre_t2))
     return res_lst
-
-
-def get_all_suffixs_files(root: str, suffixs: list) -> tuple[list]:
-    """获取目录下指定后缀文件名
-
-    Parameters
-    ---
-    `root`: Absolute path of folder.
-
-    `suffixs`: Suffixs to select.
-
-    Return
-    ---
-    `namelist`: List of file name.
-
-    `abspathlist`: List of absolute path of files.
-    """
-    name_lst, path_lst = [], []
-    for tmproot, _, tmppaths in os.walk(root):
-        if tmproot == root:
-            for tmppath in tmppaths:
-                for _ in filter(tmppath.endswith, suffixs):
-                    name_lst.append(tmppath)
-                    path_lst.append("%s/%s" % (root, tmppath))
-    return name_lst, path_lst
 
 
 def get_clip(cut_range, all_videos, all_length, cumsum_length):
@@ -105,12 +83,15 @@ class Gam:
         cutSetPath,
         threads,
         settings,
+        pre_t = 0,
+        aft_t = 0,
+        bet_t = 0.01
     ):
         self.noise_sig_length = 0.5
         self.growth_or_decay_time_of_voice = 0.5
-        self.pre_t = 0
-        self.aft_t = 0
-        self.bet_t = self.pre_t + self.aft_t + 2 * self.growth_or_decay_time_of_voice + 0.01
+        self.pre_t = pre_t
+        self.aft_t = aft_t
+        self.bet_t = bet_t + 2 * self.growth_or_decay_time_of_voice
         self.speedx = settings["Gam"]["speed"]["speedx"]
         self.cutSetPath = cutSetPath
         self.min_t = 0
@@ -231,7 +212,6 @@ def cut_game_video_single_file(record_name, output_name, record_root, nthreads):
     for i in range(0, len(df)):
         t1, t2 = df.loc[i, ["start","end"]]
         clip_lst.append(all_clip.subclip(t1, t2).crossfadein(0.3).crossfadeout(0.3))
-    print([clip.duration for clip in clip_lst][-10:])
     # 组合
     video = concatenate_videoclips(clip_lst, method="chain")
     video.write_videofile(output_path, threads=nthreads)
@@ -303,11 +283,41 @@ def cut_game_record(root, nthreads, individual=False):
 if __name__ == "__main__":
     # test_microphone(1, 400)
 
-    THREADS = 7                                                            # 导出视频时的线程数
+    # ============= Settings =============
+    root = r"E:\游戏视频\2023-06-03【天空之剑】P03 火山地区、寻找库伊娜"
+    path_cover = ""
+    title = "【天空之剑】P03 火山地区、寻找库伊娜"
+    description = """
+                库伊娜真漂亮！
 
-    root = r"E:\游戏视频\2023-05-11 【王国之泪】P01 到达海拉鲁大地"
+                相关游戏：《塞尔达传说：天空之剑》
+
+                来自于本人2023-06-03游戏录屏文件，经过程序粗剪
+                """
+    bililabels = ["塞尔达传说", "塞尔达传说：天空之剑", "游戏实况"]
+    primary_category = "游戏"
+    secondary_category = "单机游戏"
+
+    # ======== Cut Video ==========
     if not os.path.exists(root):
         print("Error! 不存在指定目录文件夹! 请检查文件设置！"); exit()
 
-    # cut_game_record(root, THREADS)
-    cut_game_video_single_file("2023-05-11 23-12-48.mkv", "1.mp4", r"E:\游戏视频\2023-05-11 【王国之泪】P01 到达海拉鲁大地", THREADS)
+    namelst, abspathlst = get_all_suffixs_files(root, [".mp4"])
+    for name, abspath in zip(namelst, abspathlst):
+        cut_range_path    = os.path.join(root, name[:-4]+"_CutRange.csv")
+        game = Gam(cut_range_path, THREADS, SETTINGS, 3, 0, 12)
+        game.get_time_set_to_cut(abspath)
+
+    cut_game_video_multifile_together(root, THREADS)
+
+    # ========== Upload ==========
+    from Upload import upload
+    
+    path_video_h = os.path.join(root, "Output", "output_cut.mp4")
+    upload(path_video_h,
+        path_cover,
+        title,
+        description,
+        primary_category,
+        secondary_category,
+        bililabels)

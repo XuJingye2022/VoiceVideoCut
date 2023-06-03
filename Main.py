@@ -7,7 +7,6 @@ from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, \
     QPushButton, QDoubleSpinBox, QProgressBar, QRadioButton, QButtonGroup, \
     QMessageBox, QHBoxLayout, QLabel
 from small_tools.pic_video_attribution import get_duration
-from small_tools.convert_vid_format import mkv2mp4
 import pandas as pd
 import toml
 from math import floor
@@ -174,9 +173,6 @@ class CutRange(QMainWindow):
         if file_dialog.exec():
             # Select '.mkv' or 'mp4' video
             filepath = file_dialog.selectedFiles()[0]
-            # If ".mkv" format ,change it to `.mp4`
-            if filepath.endswith(".mkv"):
-                filepath = mkv2mp4(filepath)
             # Load
             self.abs_video_path = filepath
             self.root, filename = os.path.split(filepath)
@@ -203,8 +199,7 @@ class CutRange(QMainWindow):
         if self.root == "":
             QMessageBox.information(self, "Error", "???\nNo video file has selected!")
             return None
-        
-        if not os.path.exists(self.speech_range_path):
+        if not (os.path.exists(self.speech_range_path) or os.path.exists(self.cut_range_path)):
             game = Gam(self.speech_range_path, THREADS, SETTINGS)
             game.get_time_set_to_cut(self.abs_video_path)
         self._load_speech_range_from_file()
@@ -364,6 +359,7 @@ class CutRange(QMainWindow):
                     self.media_player.setPosition(int(round(self.tL*1000,2)))
                     self._change_marked_LineEdit(i, 4)
                     if self.media_player.state() != QMediaPlayer.PlayingState:
+                        print("检测到暂停，马上播放")
                         self.media_player.play()
                         self.play_button.setText('STOP')
                 break
@@ -386,6 +382,7 @@ class CutRange(QMainWindow):
                     self.media_player.setPosition(int(round(self.tL*1000,2)))
                     self._change_marked_LineEdit(i, 4)
                     if self.media_player.state() != QMediaPlayer.PlayingState:
+                        print("检测到暂停，马上播放")
                         self.media_player.play()
                         self.play_button.setText('STOP')
                 break
@@ -449,6 +446,9 @@ class CutRange(QMainWindow):
                 self.play_button.setText('STOP')
                 # Change color
                 self._change_marked_LineEdit(i, 4)
+                # Change Play mode
+                if self.mode0.isChecked():
+                    self.mode2.setChecked(True)
                 break
     def _tR_select(self):
         for i in self.idx_range:
@@ -464,6 +464,9 @@ class CutRange(QMainWindow):
                 self._change_marked_LineEdit(i, 7)
                 self.media_player.play()
                 self.play_button.setText('STOP')
+                # Change Play mode
+                if self.mode0.isChecked():
+                    self.mode2.setChecked(True)
                 break
 
 
@@ -606,9 +609,9 @@ class CutRange(QMainWindow):
         if self.root == "":
             QMessageBox.information(self, "Error", "???\nNo video file has selected!")
             return None
-        _, file_list = get_all_suffixs_files(self.root, [".csv"])
+        _, file_list = get_all_suffixs_files(self.root, [".csv", ".mkv"])
         for file in file_list:
-            if file.endwith("CutRange.csv"):
+            if file.endswith("CutRange.csv"):
                 continue
             if os.path.exists(file):
                 os.remove(file)
@@ -687,11 +690,8 @@ def _check_cut_range(df):
 
 
 if __name__ == "__main__":
-    # app = QApplication(sys.argv)
-    # window = CutRange()
-    # window.show()
-    # sys.exit(app.exec())
-    # # cProfile.run("app = QApplication(sys.argv);window = CutRange();window.show();sys.exit(app.exec())")
-
-    
-    mkv2mp4(r"E:\游戏视频\2023-05-20 【王国之泪】P17 迷之森林与最终决战\2023-05-20 08-37-16.mkv")
+    app = QApplication(sys.argv)
+    window = CutRange()
+    window.show()
+    sys.exit(app.exec())
+    # cProfile.run("app = QApplication(sys.argv);window = CutRange();window.show();sys.exit(app.exec())")

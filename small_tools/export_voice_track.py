@@ -15,4 +15,4 @@ def get_second_track(path):
     return audiopath
 
 if __name__ == "__main__":
-    get_second_track("E:/游戏视频/2023-05-11 【王国之泪】P01 到达海拉鲁大地/Output/output_cut.mp4")
+    get_second_track("E:/游戏视频/2023-05-30 【密特罗德 究极】/2023-05-29 22-43-32.mp4")

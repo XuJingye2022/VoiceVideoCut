@@ -42,7 +42,7 @@
 
     ![](pics/2023-05-04%20075434.png)
 
-    在OBS设置中, 设置视频类型为`mkv`or`mp4`(Update 2023.05.24), 且视频音轨选中`1`和`2`(其中音轨`2`就是麦克风音轨).
+    在OBS设置中, 设置视频类型为`mkv` or `mp4`(Update 2023.05.24), 且视频音轨选中`1`和`2`(其中音轨`2`就是麦克风音轨).
 
     In `Setting - Output - Recording`, you need to set `Recording Format`: `mp4` and `Audio Track`: `1+2`.(Track `2` is microphone track)
 
