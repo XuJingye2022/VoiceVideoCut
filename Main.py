@@ -163,6 +163,9 @@ class CutRange(QMainWindow):
         # self.scroll_widget.setGeometry(self.video_w+20, 20+self.mode_h, self.scroll_area_w-20, self.video_h+self.button_h - self.mode_h-20)
         self.scroll_layout = QGridLayout(self.scroll_widget)
         self.scroll_layout.setVerticalSpacing(1)
+        # Refresh page numbers
+        self._refresh_data_numbers_per_page()
+        # 绘制控件
         self._plot_cut_range()
 
     """
@@ -226,8 +229,10 @@ class CutRange(QMainWindow):
                 self.data_dict[i] = self._get_hline_widgets()
             else:
                 self.data_dict[i] = self._get_data_widgets(round(df.iloc[(i-1)//2, 0],2), round(df.iloc[(i-1)//2, 1],2), "Chat")
+        # Refresh page numbers
+        self._refresh_data_numbers_per_page()
+        # 更新控件
         self._plot_cut_range()
-
 
     def _plot_cut_range(self):
         # Delete all widgets in scroll area.
@@ -236,8 +241,6 @@ class CutRange(QMainWindow):
                 self.scroll_layout.itemAt(i).widget().setParent(None)
         except:
             pass
-        # Refresh page numbers
-        self._refresh_data_numbers_per_page()
         # Get plot range
         idx1, idx2 = self.widgets_range_per_page[int(self.text_page.text())-1]
         self.idx_range = range(idx1, idx2)
@@ -292,6 +295,8 @@ class CutRange(QMainWindow):
                 self.data_dict[i+1] = self._get_data_widgets(tL, tR, "Trans")
                 # New Line: 2
                 self.data_dict[i] = self._get_hline_widgets()
+                # Refresh page numbers
+                self._refresh_data_numbers_per_page()
                 # Plot widgets
                 self._plot_cut_range()
                 # Change video player
@@ -625,11 +630,17 @@ class CutRange(QMainWindow):
         if pagenum > 1:
             self.text_page.setText(str(pagenum-1))
             self._plot_cut_range()
+        else:
+            self.text_page.setText(str(len(self.widgets_range_per_page)))
+            self._plot_cut_range()
 
     def _nex_page(self):
         pagenum = int(self.text_page.text())
         if pagenum < len(self.widgets_range_per_page):
             self.text_page.setText(str(pagenum+1))
+            self._plot_cut_range()
+        else:
+            self.text_page.setText("1")
             self._plot_cut_range()
 
     def _change_marked_LineEdit(self, i, j):
