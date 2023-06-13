@@ -1,5 +1,5 @@
 import sys, os
-from PyQt5.QtCore import QUrl, QTimer, QThread, pyqtSignal
+from PyQt5.QtCore import QUrl, QTimer, QThread, pyqtSignal, Qt
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, \
@@ -9,7 +9,7 @@ from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, \
 from small_tools.pic_video_attribution import get_duration
 import pandas as pd
 import toml
-from math import floor
+from math import floor, ceil
 from GamMicroTrack import Gam, cut_game_record
 from GamMicroTrack import combine_ranges
 from small_tools.filemani import get_all_suffixs_files
@@ -54,7 +54,6 @@ class CutRange(QMainWindow):
         self.data_dict = dict()
         self.duration = 0           # Video Length
         self.widgets_number_per_page = 30
-        self.pagenum = 0
         self.widgets_range_per_page = None
         self.idx_range = range(0, self.widgets_number_per_page)
         self.idx_play_now = 0       # idx of video playing
@@ -142,8 +141,12 @@ class CutRange(QMainWindow):
         buttongroup.addButton(self.mode2)
 
         # ============= Previous Ranges and Next Ranges ==========
+        self.text_page = QLineEdit("1", self)
+        self.text_page.setGeometry(self.video_w+50+3*self.mode_w, 10, int(floor(self.mode_w/2)), self.mode_h)
+        self.text_page.setAlignment(Qt.AlignRight)
+        self.text_page.textChanged.connect(self._plot_cut_range)
         self.label_page = QLabel("", self)
-        self.label_page.setGeometry(self.video_w+50+3*self.mode_w, 10, self.mode_w, self.mode_h)
+        self.label_page.setGeometry(self.video_w+50+3*self.mode_w+int(floor(self.mode_w/2)), 10, int(ceil(self.mode_w/2)), self.mode_h)
         self.btn_pre_page = QPushButton("Prev", self)
         self.btn_pre_page.setGeometry(self.video_w+60+4*self.mode_w, 10, self.mode_w, self.mode_h)
         self.btn_pre_page.clicked.connect(self._pre_page)
@@ -236,7 +239,7 @@ class CutRange(QMainWindow):
         # Refresh page numbers
         self._refresh_data_numbers_per_page()
         # Get plot range
-        idx1, idx2 = self.widgets_range_per_page[self.pagenum]
+        idx1, idx2 = self.widgets_range_per_page[int(self.text_page.text())-1]
         self.idx_range = range(idx1, idx2)
         for row, idx in enumerate(self.idx_range):
             if len(self.data_dict[idx]) == 1:
@@ -250,16 +253,17 @@ class CutRange(QMainWindow):
         # Set the widget for the scroll area
         self.scroll_area.setWidget(self.scroll_widget)
 
-
     def _refresh_data_numbers_per_page(self):
-        tmp_lst = [self.widgets_number_per_page] * (len(self.data_dict)//self.widgets_number_per_page)
-        tmp_lst.append(len(self.data_dict)%self.widgets_number_per_page)
-        res_lst = []
-        for pagenum, widget_count in enumerate(tmp_lst):
+        """Refresh data according page num in `self.text_page.text()`
+        """
+        widgets_num_list = [self.widgets_number_per_page] * (len(self.data_dict)//self.widgets_number_per_page)
+        widgets_num_list.append(len(self.data_dict)%self.widgets_number_per_page)
+        widget_index_range_list = []
+        for pagenum, widget_count in enumerate(widgets_num_list):
             idx_L = pagenum * self.widgets_number_per_page
-            res_lst.append((idx_L, idx_L + widget_count))
-        self.label_page.setText("%s/%s"%(self.pagenum+1, len(res_lst)))
-        self.widgets_range_per_page=res_lst
+            widget_index_range_list.append((idx_L, idx_L + widget_count))
+        self.label_page.setText("/%s"%len(widget_index_range_list))
+        self.widgets_range_per_page=widget_index_range_list
 
     # ============================================================
     # Get hline widget and connect to `add new row` function
@@ -617,20 +621,16 @@ class CutRange(QMainWindow):
                 os.remove(file)
 
     def _pre_page(self):
-        if self.pagenum > 0:
-            self.pagenum -= 1
-        else:
-            self.pagenum = len(self.widgets_range_per_page)-1
-        self.label_page.setText("%s/%s"%(self.pagenum+1, len(self.widgets_range_per_page)))
-        self._plot_cut_range()
+        pagenum = int(self.text_page.text())
+        if pagenum > 1:
+            self.text_page.setText(str(pagenum-1))
+            self._plot_cut_range()
 
     def _nex_page(self):
-        if self.pagenum < len(self.widgets_range_per_page)-1:
-            self.pagenum += 1
-        else:
-            self.pagenum = 0
-        self.label_page.setText("%s/%s"%(self.pagenum+1, len(self.widgets_range_per_page)))
-        self._plot_cut_range()
+        pagenum = int(self.text_page.text())
+        if pagenum < len(self.widgets_range_per_page):
+            self.text_page.setText(str(pagenum+1))
+            self._plot_cut_range()
 
     def _change_marked_LineEdit(self, i, j):
         colored_row, colored_col = self.colored_widget
