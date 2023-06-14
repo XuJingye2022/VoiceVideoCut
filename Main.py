@@ -38,7 +38,7 @@ class CutRange(QMainWindow):
         self.video_w = 1200
         self.video_h = 675
         self.scroll_area_w = 560
-        self.progress_bar_h = 4
+        self.slider_h = 15
         self.button_w = int(floor(self.video_w-70)/8)
         self.button_h = 30
         self.window_w = self.video_w + self.scroll_area_w + 30
@@ -80,11 +80,9 @@ class CutRange(QMainWindow):
         self.tL = 0
         self.tR = 0
         # Video Progress Bar
-        # self.progress_bar = QProgressBar(self)
-        # self.progress_bar.setTextVisible(False)
-        self.progress_bar = QSlider(Qt.Horizontal, self)
-        self.progress_bar.setGeometry(10, self.video_h+10, self.video_w, 14)
-        self.progress_bar.setRange(0, 1000)
+        self.slider = QSlider(Qt.Horizontal, self)
+        self.slider.setGeometry(10, self.video_h+10, self.video_w, self.slider_h)
+        self.slider.setRange(0, 1000)
         
 
         # ============== Button.1 To Open Window ==============
@@ -210,7 +208,7 @@ class CutRange(QMainWindow):
     def _update_progress_bar(self):
         if self.duration > 0:
             progress = int(round(self.media_player.position() / self.duration))
-            self.progress_bar.setValue(progress)
+            self.slider.setValue(progress)
 
     """
     =============== Connect to the Button 2 ===============
@@ -238,6 +236,7 @@ class CutRange(QMainWindow):
         else:
             print("Plese analyze video first!"); return None
         # load to self.data_dict
+        self.data_dict = dict()
         for i in range(2*len(df)+1):
             if i%2 == 0:
                 self.data_dict[i] = self._get_hline_widgets()
