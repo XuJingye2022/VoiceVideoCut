@@ -5,7 +5,7 @@ from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
 from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, \
     QFileDialog, QPushButton, QScrollArea, QLineEdit, QWidget, \
     QPushButton, QDoubleSpinBox, QProgressBar, QRadioButton, QButtonGroup, \
-    QMessageBox, QHBoxLayout, QLabel
+    QMessageBox, QHBoxLayout, QLabel, QSlider
 from small_tools.pic_video_attribution import get_duration
 import pandas as pd
 import toml
@@ -42,7 +42,7 @@ class CutRange(QMainWindow):
         self.button_w = int(floor(self.video_w-70)/8)
         self.button_h = 30
         self.window_w = self.video_w + self.scroll_area_w + 30
-        self.window_h = self.video_h + self.button_h + 30
+        self.window_h = self.video_h + self.button_h + 40
         self.mode_w = int(floor((self.scroll_area_w-40)/6))
         self.mode_h = 30
         # Something will used
@@ -70,6 +70,7 @@ class CutRange(QMainWindow):
         # ============== Video Play ==============
         self.media_player = QMediaPlayer(self)
         self.video_widget = QVideoWidget(self)
+        self.video_widget.mousePressEvent = self._play_pause_video
         self.media_player.setVideoOutput(self.video_widget)
         self.video_widget.setGeometry(10, 10, self.video_w, self.video_h)
         # Timer For Video
@@ -79,49 +80,51 @@ class CutRange(QMainWindow):
         self.tL = 0
         self.tR = 0
         # Video Progress Bar
-        self.progress_bar = QProgressBar(self)
-        self.progress_bar.setTextVisible(False)
-        self.progress_bar.setGeometry(10, self.video_h+10, self.video_w, 4)
+        # self.progress_bar = QProgressBar(self)
+        # self.progress_bar.setTextVisible(False)
+        self.progress_bar = QSlider(Qt.Horizontal, self)
+        self.progress_bar.setGeometry(10, self.video_h+10, self.video_w, 14)
         self.progress_bar.setRange(0, 1000)
+        
 
         # ============== Button.1 To Open Window ==============
         self.open_folder_button = QPushButton("Open Video File", self)
-        self.open_folder_button.setGeometry(10, self.video_h+20, self.button_w, self.button_h)
+        self.open_folder_button.setGeometry(10, self.video_h+30, self.button_w, self.button_h)
         self.open_folder_button.clicked.connect(self.open_video_file)
 
         # ============== Button.2 Analyze Recording Video ==============
         self.analyze_button = QPushButton("Analyze", self)
-        self.analyze_button.setGeometry(20+self.button_w, self.video_h+20, self.button_w, self.button_h)
+        self.analyze_button.setGeometry(20+self.button_w, self.video_h+30, self.button_w, self.button_h)
         self.analyze_button.clicked.connect(self.analyze_video)
 
         # ============== Button.3 Previous Range ==============
         self.prev_range_button = QPushButton("PREV", self)
-        self.prev_range_button.setGeometry(30+2*self.button_w, self.video_h+20, self.button_w, self.button_h)
+        self.prev_range_button.setGeometry(30+2*self.button_w, self.video_h+30, self.button_w, self.button_h)
         self.prev_range_button.clicked.connect(self.previous_range)
 
         # ============== Button.4 PLAY/STOP video ==============
         self.play_button = QPushButton("STOP", self)
-        self.play_button.setGeometry(40+3*self.button_w, self.video_h+20, self.button_w, self.button_h)
+        self.play_button.setGeometry(40+3*self.button_w, self.video_h+30, self.button_w, self.button_h)
         self.play_button.clicked.connect(self.play_video)
 
         # ============== Button.5 Next Range ==============
         self.next_range_button = QPushButton("NEXT", self)
-        self.next_range_button.setGeometry(50+4*self.button_w, self.video_h+20, self.button_w, self.button_h)
+        self.next_range_button.setGeometry(50+4*self.button_w, self.video_h+30, self.button_w, self.button_h)
         self.next_range_button.clicked.connect(self.next_range)
 
         # ============== Button.6 Export Cut Range ==============
         self.save_button = QPushButton("Save New Range", self)
-        self.save_button.setGeometry(60+5*self.button_w, self.video_h+20, self.button_w, self.button_h)
+        self.save_button.setGeometry(60+5*self.button_w, self.video_h+30, self.button_w, self.button_h)
         self.save_button.clicked.connect(self.save_new_range)
 
         # ============== Button.7 Cut Without Silence ==============
         self.cut_button1 = QPushButton("Cut", self)
-        self.cut_button1.setGeometry(70+6*self.button_w, self.video_h+20, self.button_w, self.button_h)
+        self.cut_button1.setGeometry(70+6*self.button_w, self.video_h+30, self.button_w, self.button_h)
         self.cut_button1.clicked.connect(self.cut_game_video)
         
         # ============== Button.8 Clear Cache ==============
         self.cut_button2 = QPushButton("Clear Cache", self)
-        self.cut_button2.setGeometry(80+7*self.button_w, self.video_h+20, self.button_w, self.button_h)
+        self.cut_button2.setGeometry(80+7*self.button_w, self.video_h+30, self.button_w, self.button_h)
         self.cut_button2.clicked.connect(self.clear_cache)
 
         # ============== Select Mode ===============
@@ -156,7 +159,7 @@ class CutRange(QMainWindow):
 
         # ============== Display Cut Range ==============
         self.scroll_area = QScrollArea(self)
-        self.scroll_area.setGeometry(self.video_w+20, 20+self.mode_h, self.scroll_area_w, self.video_h+self.button_h - self.mode_h)
+        self.scroll_area.setGeometry(self.video_w+20, 20+self.mode_h, self.scroll_area_w, self.window_h - self.mode_h - 30)
         self.scroll_area.setWidgetResizable(True)
         # Recreate a widget to hold the line edits
         self.scroll_widget = QWidget()
@@ -167,6 +170,17 @@ class CutRange(QMainWindow):
         self._refresh_data_numbers_per_page()
         # 绘制控件
         self._plot_cut_range()
+
+    def _play_pause_video(self, event):
+        """Control playing or pausing video by click
+        """
+        if self.media_player.state() == QMediaPlayer.PlayingState:
+            self.media_player.pause()
+            self.play_button.setText('PLAY')
+        else:
+            self.media_player.play()
+            self.play_button.setText('PAUSE')
+
 
     """
     ============= Connect to the Button 1 ===================
@@ -527,7 +541,6 @@ class CutRange(QMainWindow):
                 self.tL = tmp_tL
                 self.tR = tmp_tR
                 self.idx_play_now = i
-                print("更改播放范围为： ", self.tL, " ", self.tR)
                 self.media_player.play()
                 self.play_button.setText('STOP')
                 break
@@ -586,12 +599,6 @@ class CutRange(QMainWindow):
         elif self.mode2.isChecked() and cond2:
             self.media_player.setPosition(int(round(self.tL*1000)))
             
-
-    def _update_tL(self):
-        self.tL = self.tL_spinbox.value()
-
-    def _update_tR(self):
-        self.tR = self.tR_spinbox.value()
 
 
     """

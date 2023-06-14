@@ -302,13 +302,13 @@ if __name__ == "__main__":
     if not os.path.exists(root):
         print("Error! 不存在指定目录文件夹! 请检查文件设置！"); exit()
 
-    namelst, abspathlst = get_all_suffixs_files(root, [".mp4"])
-    for name, abspath in zip(namelst, abspathlst):
-        cut_range_path    = os.path.join(root, name[:-4]+"_CutRange.csv")
-        game = Gam(cut_range_path, THREADS, SETTINGS, 3, 0, 12)
-        game.get_time_set_to_cut(abspath)
+    # namelst, abspathlst = get_all_suffixs_files(root, [".mp4"])
+    # for name, abspath in zip(namelst, abspathlst):
+    #     cut_range_path    = os.path.join(root, name[:-4]+"_CutRange.csv")
+    #     game = Gam(cut_range_path, THREADS, SETTINGS, 3, 0, 12)
+    #     game.get_time_set_to_cut(abspath)
 
-    cut_game_video_multifile_together(root, THREADS)
+    # cut_game_video_multifile_together(root, THREADS)
 
     # ========== Upload ==========
     from Upload import upload
