@@ -1,50 +1,29 @@
 # VoiceVideoCut
 这个程序是用来剪辑双音轨的语音视频的. 适合录制无特效的**视频教程**、**游戏录屏**、**反应视频**.
 
-*This progam is used to cut speech in a dual track video, suitable for **video tutorials**, **game screen recording** and **reaction video**.*
-
-# What does this program do?
+# 这个程序可以做什么
 通过人声音轨, 找到连续的人声范围——即初始的剪辑范围. 
-
-*By voice track, the program can calculate speech range, which is initial clipping range.*
 
 然后每个范围都可以在编辑界面中预览. 如果觉得这个范围需要扩展, 你可以通过`+1s`和`-1s`按钮来调整. 当然过于接近的范围最后会合并.
 
-*Every clipping range can be previewed in the program, and you can adjust these ranges by `+1s` and `-1s` button. Two ranges too close will be combined at last.*
-
 最后, 你有两个导出方式:
-
-*At last, you have two methods to export this video:*
 
 1. 删除其它范围, 
 
-    *Export without parts outside these clipping ranges;*
+2. 加速其它范围(感觉没用，暂时没做).
 
-2. 加速其它范围.
-   
-    *Export with those parts but at multiple speeds.*
-
-
-# How to use it?
+# 使用方法
 1. 下载整个程序.
    
-   *Download all this program.*
 2. 安装[K-Lite Codec Pack](http://www.codecguide.com/download_k-lite_codec_pack_standard.htm).
    
-   Install [K-Lite Codec Pack](http://www.codecguide.com/download_k-lite_codec_pack_standard.htm).
 3. 安装[OBS](https://obsproject.com/download).
    
-   Install [OBS](https://obsproject.com/download).
-   
 4. 使用OBS录制之前, 点击`混音器 - 设置`, 并给单独给麦克风音轨2.
-
-    Before recording, you should clik `Audio Mixer - Advanced Audio Properties`, and set microphone to track 2.
 
     ![](pics/2023-05-04%20075434.png)
 
     在OBS设置中, 设置视频类型为`mkv` or `mp4`(Update 2023.05.24), 且视频音轨选中`1`和`2`(其中音轨`2`就是麦克风音轨).
-
-    In `Setting - Output - Recording`, you need to set `Recording Format`: `mp4` and `Audio Track`: `1+2`.(Track `2` is microphone track)
 
     ![](pics/2023-05-04%20075857.png)
 
@@ -66,27 +45,12 @@
 12. 点击`Clear Cache`清楚所有缓存文件.
 
 
-# Some Problem
+# 一些问题
 - 所有过程都是单线程, 尤其是导出视频时, 千万不能动主窗口.
   
-  Every function is single thread. Don't move the window especially when export videos.
-
 - 代码可读性差了点.
   
 - 用的时候小心点.
 
 # TODO
-- [x] 光标移动到剪辑时间范围的中间时， 会出现`+`按钮， 你可以点击它增加新的行. 新的行不默认为Chat, 而是Trans, 意味着Transition scenes, 过渡场景. 用来交代从前一个场景到后一个场景的过渡. 用来交代游戏角色动作的连续. QRadioButton三个分别为: Trans, Chat(enable=False), noise.
-    
-    OK, you can add new clip range bwtween two clipping ranges now.
-
-- [x] 增加三种预览功能：
-    1. 普通的视频播放功能
-    2. 在剪切范围内循环
-    3. 多个剪切范围依次播放
-
-- [x] For many clipping ranges, the widgets may be too many. So I split them to different pages. But it's still too slow. I removed `QDoubleSpinBox`: `self.tL_spinbox/sR_spinbox`. `setValue` method fucking too slow.
-
-- [ ] There is a bug when after add new rows. 有时翻到最后一页，它在画控件布局的时候，会说越界了。但是重新加载剪辑时间范围，就没有这个问题。
-
 - [ ] 配合[Whisper](https://github.com/openai/whisper) or [autocut](https://github.com/dorgonman/autocut) or [CTranslate2](https://github.com/OpenNMT/CTranslate2/)，展示字幕文件
