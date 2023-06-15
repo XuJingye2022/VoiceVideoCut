@@ -145,7 +145,7 @@ class CutRange(QMainWindow):
         self.text_page = QLineEdit("1", self)
         self.text_page.setGeometry(self.video_w+50+3*self.mode_w, 10, int(floor(self.mode_w/2)), self.mode_h)
         self.text_page.setAlignment(Qt.AlignRight)
-        self.text_page.textChanged.connect(self._plot_cut_range)
+        self.text_page.editingFinished.connect(self._plot_cut_range)
         self.label_page = QLabel("", self)
         self.label_page.setGeometry(self.video_w+50+3*self.mode_w+int(floor(self.mode_w/2)), 10, int(ceil(self.mode_w/2)), self.mode_h)
         self.btn_pre_page = QPushButton("Prev", self)
@@ -300,10 +300,7 @@ class CutRange(QMainWindow):
                 for j in range(len(self.data_dict)+1, i+1, -1):
                     self.data_dict[j] = self.data_dict[j-2]
                 # New line: 1
-                if i==0:
-                    tL = 0
-                else:
-                    tL = round(float(self.data_dict[i-1][7].text())+0.01, 2)
+                tL = 0 if (i==0) else round(float(self.data_dict[i-1][7].text())+0.01, 2)
                 tR = round(float(self.data_dict[i+3][4].text())-0.01, 2)
                 self.data_dict[i+1] = self._get_data_widgets(tL, tR, "Trans")
                 # New Line: 2
