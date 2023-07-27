@@ -5,8 +5,15 @@ resolution_h = 1080
 resolution_width_preview = 360
 resolution_height_preview = 240
 
-[Gam.speed]
+[Gam]
 speedx = 4                              # 不讲话部分几倍速
+pre_time = 3                            # 讲话之前留出多少时间
+aft_time = 0.5                          # 讲话之后留出多少时间
+bet_time = 5.01                         # 两段话中间间隔多少时间
+noise_sig_length = 0.5                  # 小于多少秒的信号视为噪声
+growth_or_decay_time_of_voice = 0.5     # 讲话声音的衰减、增长时间，避免我采取的阈值导致声音突然出现和中断
+threads = 7                             # 剪辑时用多少线程
+cri_relative_dB = 0.1                   # 多少分贝数视作有效人声？范围0~1
 
 
 [supportedFormat]

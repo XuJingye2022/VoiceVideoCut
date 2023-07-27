@@ -10,17 +10,17 @@ import numpy as np
 import pandas as pd
 
 from moviepy.editor import VideoFileClip, concatenate_videoclips
-from small_tools.get_dB_from_mp3 import get_dB_from_video
 from multipledispatch import dispatch, variadic
-from small_tools.second_to_hms import seconds_to_hms
-from small_tools.filemani import change_suffix, get_all_suffixs_files
 import toml
 
-THREADS = 4
+from small_tools.get_dB_from_mp3 import get_dB_from_video
+from small_tools.time_convert import seconds_to_hms
+from small_tools.file_manipulation import change_suffix, get_all_suffixs_files
+
 SETTINGS = toml.load("./settings.toml")
 
 def combine_ranges(t_ranges: list[tuple], t_error):
-    """结合各个比较近的时间范围
+    """组合各个比较近的时间范围
 
     `t_error`: 时间范围之间的最大容许距离
     """
@@ -81,24 +81,20 @@ class Gam:
     def __init__(
         self,
         cutSetPath,
-        threads,
-        settings,
-        pre_t = 0,
-        aft_t = 0,
-        bet_t = 0.01
+        settings
     ):
-        self.noise_sig_length = 0.5
+        self.noise_sig_length = settings["Gam"]["noise_sig_length"]
         self.growth_or_decay_time_of_voice = 0.5
-        self.pre_t = pre_t
-        self.aft_t = aft_t
-        self.bet_t = bet_t + 2 * self.growth_or_decay_time_of_voice
-        self.speedx = settings["Gam"]["speed"]["speedx"]
+        self.pre_t = settings["Gam"]["pre_time"]
+        self.aft_t = settings["Gam"]["aft_time"]
+        self.bet_t = settings["Gam"]["bet_time"] + 2 * self.growth_or_decay_time_of_voice
+        self.speedx = settings["Gam"]["speedx"]
         self.cutSetPath = cutSetPath
         self.min_t = 0
         self.max_t = 0  # 加载后立马更改
         # self.settings = settings
         # self.mark_path = mark_path
-        self.threads = threads
+        self.threads = settings["Gam"]["threads"]
 
     def from_tpoints_to_tranges(self, tlst: list) -> list[tuple]:
         return [
@@ -129,7 +125,7 @@ class Gam:
         for i in range(len(t_ranges)-1,-1, -1):
             t1, t2 = t_ranges[i]
             df = df_dB[(t1<=df_dB["time"]) & (df_dB["time"]<=t2)]
-            if np.max(df["dB"]) < 0.01:
+            if np.max(df["dB"]) < SETTINGS["Gam"]["cri_relative_dB"]:
                 del t_ranges[i]
         return t_ranges
 
@@ -152,7 +148,7 @@ class Gam:
             df.to_csv(abs_audio_volume_path, index=False)
         # Select volumn data
         self.max_t = max(df["time"])
-        df = df[(df["dB"] > 0.1)]
+        df = df[(df["dB"] > 0.01)]      # 这里多保留一些数据，因为存在低声嘀咕的情况
         df.reset_index(inplace=True, drop=True)
         # Load time and volumn data
         t_lst = list(df["time"])
@@ -168,17 +164,18 @@ class Gam:
         # 4. Expand ranges and Combine
         t_ranges = [(max(self.min_t, a-self.pre_t), min(self.max_t, b+self.aft_t)) for a, b in t_ranges]
         t_ranges = combine_ranges(t_ranges, self.bet_t - self.aft_t - self.pre_t)
-        # 4. 去除没有说话的部分——通过分贝数全程没有超过某个阈值判断
+        # 6. 去除没有说话的部分——通过分贝数全程没有超过某个阈值判断
         t_ranges = self.remove_dB_small(t_ranges, t_lst, dB_lst)
-        # 5. Remove short noise
-        t_ranges = list(filter(lambda x: x[1]-x[0]-self.pre_t-self.aft_t>self.noise_sig_length, t_ranges))
+        # 7. Remove short noise
+        # 这一段不能前置，因为可能会去除一些语气词
+        t_ranges = list(filter(lambda x: x[1]-x[0]-self.pre_t-self.aft_t-2*self.growth_or_decay_time_of_voice>self.noise_sig_length, t_ranges))
         # ==========================================
         print("分段数量: ", len(t_ranges))
         # ============== 总时长 =============
         res = 0.0
         for i in range(len(t_ranges)):
             res += t_ranges[i][1] - t_ranges[i][0]
-        hours, minutes, seconds = seconds_to_hms(res)
+        hours, minutes, seconds, _ = seconds_to_hms(res)
         print("总时长：%s小时%s分钟%s秒"%(int(hours), int(minutes), seconds))
 
         # Save ranges of cut.
@@ -280,44 +277,3 @@ def cut_game_record(root, nthreads, individual=False):
     else:
         cut_game_video_multifile_individual(root, nthreads)
 
-if __name__ == "__main__":
-    # test_microphone(1, 400)
-
-    # ============= Settings =============
-    root = r"E:\游戏视频\2023-06-03【天空之剑】P03 火山地区、寻找库伊娜"
-    path_cover = ""
-    title = "【天空之剑】P03 火山地区、寻找库伊娜"
-    description = """
-                库伊娜真漂亮！
-
-                相关游戏：《塞尔达传说：天空之剑》
-
-                来自于本人2023-06-03游戏录屏文件，经过程序粗剪
-                """
-    bililabels = ["塞尔达传说", "塞尔达传说：天空之剑", "游戏实况"]
-    primary_category = "游戏"
-    secondary_category = "单机游戏"
-
-    # ======== Cut Video ==========
-    if not os.path.exists(root):
-        print("Error! 不存在指定目录文件夹! 请检查文件设置！"); exit()
-
-    # namelst, abspathlst = get_all_suffixs_files(root, [".mp4"])
-    # for name, abspath in zip(namelst, abspathlst):
-    #     cut_range_path    = os.path.join(root, name[:-4]+"_CutRange.csv")
-    #     game = Gam(cut_range_path, THREADS, SETTINGS, 3, 0, 12)
-    #     game.get_time_set_to_cut(abspath)
-
-    # cut_game_video_multifile_together(root, THREADS)
-
-    # ========== Upload ==========
-    from Upload import upload
-    
-    path_video_h = os.path.join(root, "Output", "output_cut.mp4")
-    upload(path_video_h,
-        path_cover,
-        title,
-        description,
-        primary_category,
-        secondary_category,
-        bililabels)

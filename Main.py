@@ -2,6 +2,7 @@ import sys, os
 from PyQt5.QtCore import QUrl, QTimer, QThread, pyqtSignal, Qt
 from PyQt5.QtMultimediaWidgets import QVideoWidget
 from PyQt5.QtMultimedia import QMediaPlayer, QMediaContent
+from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtWidgets import QApplication, QGridLayout, QMainWindow, \
     QFileDialog, QPushButton, QScrollArea, QLineEdit, QWidget, \
     QPushButton, QDoubleSpinBox, QProgressBar, QRadioButton, QButtonGroup, \
@@ -12,14 +13,24 @@ import toml
 from math import floor, ceil
 from GamMicroTrack import Gam, cut_game_record
 from GamMicroTrack import combine_ranges
-from small_tools.filemani import get_all_suffixs_files
-from small_tools.second_to_hms import seconds_to_hms
+from small_tools.file_manipulation import get_all_suffixs_files
+from small_tools.time_convert import seconds_to_hms, seconds_to_frame
 import subprocess, cProfile
 import threading
 from time import time
+from multipledispatch import dispatch
 
-THREADS = 7
 SETTINGS = toml.load("./settings.toml")
+THREADS = SETTINGS["Gam"]["threads"]
+
+
+# 定义起始颜色和结束颜色
+color_start = QColor(255, 0, 0)  # 红色
+color_end = QColor(0, 255, 255)  # 紫色
+# 计算颜色的Hue值
+hue_start = color_start.hue()
+hue_end = color_end.hue()
+
 
 class QSSLoader:
     def __init__(self):
@@ -37,7 +48,7 @@ class CutRange(QMainWindow):
         self.window_title = "Adjust Cut Range"
         self.video_w = 1200
         self.video_h = 675
-        self.scroll_area_w = 560
+        self.scroll_area_w = 570
         self.slider_h = 15
         self.button_w = int(floor(self.video_w-70)/8)
         self.button_h = 30
@@ -84,46 +95,15 @@ class CutRange(QMainWindow):
         self.slider.setGeometry(10, self.video_h+10, self.video_w, self.slider_h)
         self.slider.setRange(0, 1000)
         
-
-        # ============== Button.1 To Open Window ==============
-        self.open_folder_button = QPushButton("Open Video File", self)
-        self.open_folder_button.setGeometry(10, self.video_h+30, self.button_w, self.button_h)
-        self.open_folder_button.clicked.connect(self.open_video_file)
-
-        # ============== Button.2 Analyze Recording Video ==============
-        self.analyze_button = QPushButton("Analyze", self)
-        self.analyze_button.setGeometry(20+self.button_w, self.video_h+30, self.button_w, self.button_h)
-        self.analyze_button.clicked.connect(self.analyze_video)
-
-        # ============== Button.3 Previous Range ==============
-        self.prev_range_button = QPushButton("PREV", self)
-        self.prev_range_button.setGeometry(30+2*self.button_w, self.video_h+30, self.button_w, self.button_h)
-        self.prev_range_button.clicked.connect(self.previous_range)
-
-        # ============== Button.4 PLAY/STOP video ==============
-        self.play_button = QPushButton("STOP", self)
-        self.play_button.setGeometry(40+3*self.button_w, self.video_h+30, self.button_w, self.button_h)
-        self.play_button.clicked.connect(self.play_video)
-
-        # ============== Button.5 Next Range ==============
-        self.next_range_button = QPushButton("NEXT", self)
-        self.next_range_button.setGeometry(50+4*self.button_w, self.video_h+30, self.button_w, self.button_h)
-        self.next_range_button.clicked.connect(self.next_range)
-
-        # ============== Button.6 Export Cut Range ==============
-        self.save_button = QPushButton("Save New Range", self)
-        self.save_button.setGeometry(60+5*self.button_w, self.video_h+30, self.button_w, self.button_h)
-        self.save_button.clicked.connect(self.save_new_range)
-
-        # ============== Button.7 Cut Without Silence ==============
-        self.cut_button1 = QPushButton("Cut", self)
-        self.cut_button1.setGeometry(70+6*self.button_w, self.video_h+30, self.button_w, self.button_h)
-        self.cut_button1.clicked.connect(self.cut_game_video)
-        
-        # ============== Button.8 Clear Cache ==============
-        self.cut_button2 = QPushButton("Clear Cache", self)
-        self.cut_button2.setGeometry(80+7*self.button_w, self.video_h+30, self.button_w, self.button_h)
-        self.cut_button2.clicked.connect(self.clear_cache)
+        # ============== Buttons below video player ==============
+        self.open_folder_button = self.create_QPushButton("Open Video File",self.open_video_file,   10,                 self.video_h+30, self.button_w, self.button_h)
+        self.analyze_button     = self.create_QPushButton("Analyze",        self.analyze_video,     20+self.button_w,   self.video_h+30, self.button_w, self.button_h)
+        self.prev_range_button  = self.create_QPushButton("PREV",           self.previous_range,    30+2*self.button_w, self.video_h+30, self.button_w, self.button_h)
+        self.play_button        = self.create_QPushButton("STOP",           self.play_video,        40+3*self.button_w, self.video_h+30, self.button_w, self.button_h)
+        self.next_range_button  = self.create_QPushButton("NEXT",           self.next_range,        50+4*self.button_w, self.video_h+30, self.button_w, self.button_h)
+        self.save_button        = self.create_QPushButton("Save New Range", self.save_new_range,    60+5*self.button_w, self.video_h+30, self.button_w, self.button_h)
+        self.cut_button         = self.create_QPushButton("Cut",            self.cut_video,         70+6*self.button_w, self.video_h+30, self.button_w, self.button_h)
+        self.clear_cache_button = self.create_QPushButton("Clear Cache",    self.clear_cache,       80+7*self.button_w, self.video_h+30, self.button_w, self.button_h)
 
         # ============== Select Mode ===============
         mode_layout = QHBoxLayout()
@@ -148,12 +128,14 @@ class CutRange(QMainWindow):
         self.text_page.editingFinished.connect(self._plot_cut_range)
         self.label_page = QLabel("", self)
         self.label_page.setGeometry(self.video_w+50+3*self.mode_w+int(floor(self.mode_w/2)), 10, int(ceil(self.mode_w/2)), self.mode_h)
-        self.btn_pre_page = QPushButton("Prev", self)
-        self.btn_pre_page.setGeometry(self.video_w+60+4*self.mode_w, 10, self.mode_w, self.mode_h)
-        self.btn_pre_page.clicked.connect(self._pre_page)
-        self.btn_nex_page = QPushButton("Next", self)
-        self.btn_nex_page.setGeometry(self.video_w+70+5*self.mode_w, 10, self.mode_w, self.mode_h)
-        self.btn_nex_page.clicked.connect(self._nex_page)
+        self.btn_pre_page = self.create_QPushButton(
+            "Prev Page", self._pre_page,
+            self.video_w+60+4*self.mode_w, 10, self.mode_w, self.mode_h
+        )
+        self.btn_nex_page = self.create_QPushButton(
+            "Next Page", self._nex_page,
+            self.video_w+70+5*self.mode_w, 10, self.mode_w, self.mode_h
+        )
 
         # ============== Display Cut Range ==============
         self.scroll_area = QScrollArea(self)
@@ -168,6 +150,46 @@ class CutRange(QMainWindow):
         self._refresh_data_numbers_per_page()
         # 绘制控件
         self._plot_cut_range()
+
+    def create_QPushButton(self, name, connected_function, x, y, w, h):
+        button = QPushButton(name, self)
+        button.setGeometry(x, y, w, h)
+        button.clicked.connect(connected_function)
+        return button
+
+    def convert_dict_to_dataframe(self, data_dict: dict) -> pd.DataFrame:
+        t_ranges = []
+        for i in range(len(data_dict.keys())):
+            if len(data_dict[i])==1: continue
+            
+            cond1 = data_dict[i][0].isChecked()
+            cond2 = data_dict[i][1].isChecked()
+            
+            if cond1 or cond2:
+                t1 = round(float(data_dict[i][4].text()),2)
+                t2 = round(float(data_dict[i][7].text()),2)
+                t_ranges.append((t1, t2))
+
+        # Combine Ranges
+        t_ranges = combine_ranges(t_ranges, 1)
+        return pd.DataFrame(t_ranges)
+    
+    def convert_dataframe_to_dict(self, data_csv: pd.DataFrame) -> None:
+        """Load `cut_range` or `speech_range` from DataFrame to dict.
+
+        Args:
+            data_csv (pd.DataFrame): DataFrame of cut range. Names of two columns are "Start Time", "End Time"
+
+        Returns:
+            None.
+        """
+        # load to self.data_dict
+        self.data_dict = dict()
+        for i in range(2*len(data_csv)+1):
+            if i%2 == 0:
+                self.data_dict[i] = self._get_hline_widgets()
+            else:
+                self.data_dict[i] = self._get_data_widgets(round(data_csv.iloc[(i-1)//2, 0],2), round(data_csv.iloc[(i-1)//2, 1],2), "Chat")
 
     def _play_pause_video(self, event):
         """Control playing or pausing video by click
@@ -218,7 +240,7 @@ class CutRange(QMainWindow):
             QMessageBox.information(self, "Error", "???\nNo video file has selected!")
             return None
         if not (os.path.exists(self.speech_range_path) or os.path.exists(self.cut_range_path)):
-            game = Gam(self.speech_range_path, THREADS, SETTINGS)
+            game = Gam(self.speech_range_path, SETTINGS)
             game.get_time_set_to_cut(self.abs_video_path)
         self._load_speech_range_from_file()
 
@@ -235,13 +257,8 @@ class CutRange(QMainWindow):
             df = pd.read_csv(self.speech_range_path, names=["Start Time", "End Time"])
         else:
             print("Plese analyze video first!"); return None
-        # load to self.data_dict
-        self.data_dict = dict()
-        for i in range(2*len(df)+1):
-            if i%2 == 0:
-                self.data_dict[i] = self._get_hline_widgets()
-            else:
-                self.data_dict[i] = self._get_data_widgets(round(df.iloc[(i-1)//2, 0],2), round(df.iloc[(i-1)//2, 1],2), "Chat")
+        # Load data to dict
+        self.convert_dataframe_to_dict(df)
         # Refresh page numbers
         self._refresh_data_numbers_per_page()
         # 更新控件
@@ -257,17 +274,25 @@ class CutRange(QMainWindow):
         # Get plot range
         idx1, idx2 = self.widgets_range_per_page[int(self.text_page.text())-1]
         self.idx_range = range(idx1, idx2)
+        time_length_list, max_time_length = self._get_maximum_length()
         for row, idx in enumerate(self.idx_range):
             if len(self.data_dict[idx]) == 1:
                 # Plot hline widgets
                 self.scroll_layout.addWidget(self.data_dict[idx][0], row, 0, 1, 9)
             else:
                 # Plot datas
-                for j in range(9):
-                    # print("Index: %s, scroll layout row: %s, col: %s"%(idx, row, 0))
+                color = self._cal_color(time_length_list[idx], max_time_length)
+                self.data_dict[idx][9].setStyleSheet(f"background-color: {color}")
+                self.data_dict[idx][9].setText(str(round(100*time_length_list[idx]/max_time_length, 1)))
+                for j in range(10):
                     self.scroll_layout.addWidget(self.data_dict[idx][j], row, j)
         # Set the widget for the scroll area
         self.scroll_area.setWidget(self.scroll_widget)
+
+    def _cal_color(self, t_length, t_max):
+        # 设置色块组件的背景颜色
+        hue = hue_start + int((hue_end - hue_start) * t_length/t_max)
+        return QColor.fromHsv(hue, 255, 255).name()
 
     def _refresh_data_numbers_per_page(self):
         """Refresh data according page num in `self.text_page.text()`
@@ -338,8 +363,8 @@ class CutRange(QMainWindow):
         radiobutton2 = QRadioButton(f"Noise", self.scroll_widget); buttongroup.addButton(radiobutton2)
         line_edit0 = QLineEdit(str(tL), self.scroll_widget)
         line_edit1 = QLineEdit(str(tR), self.scroll_widget)
-        line_edit0.setFixedWidth(80)
-        line_edit1.setFixedWidth(80)
+        line_edit0.setFixedWidth(70)
+        line_edit1.setFixedWidth(70)
         # 时间范围上/下限的减小/增加键
         tL_dcs_btn = QPushButton("-1", self)
         tL_dcs_btn.setFixedSize(25, 25)
@@ -353,12 +378,15 @@ class CutRange(QMainWindow):
         tR_ics_btn = QPushButton("+1", self)
         tR_ics_btn.setFixedSize(25, 25)
         tR_ics_btn.clicked.connect(self._increase_text_and_play_tR_by_key)
+        # 添加表示时间长短的色块
+        color_block = QLabel(self)
+        color_block.setFixedSize(50, 25)
         # 事件绑定： 光标更改， 即刻更改播放范围
         line_edit0.cursorPositionChanged.connect(self._tL_select)
         line_edit1.cursorPositionChanged.connect(self._tR_select)
         return [radiobutton0, radiobutton1, radiobutton2, \
                     tL_dcs_btn, line_edit0, tL_ics_btn, \
-                        tR_dcs_btn, line_edit1, tR_ics_btn]
+                        tR_dcs_btn, line_edit1, tR_ics_btn, color_block]
                 
     def _increase_text_and_play_tL_by_key(self):
         for i in self.idx_range:
@@ -601,18 +629,28 @@ class CutRange(QMainWindow):
     ======================== Connect to the Button 6 ============================
     """
     def save_new_range(self):
-        p = threading.Thread(target=_save_new_range, args=(self.data_dict, self.root, self.cut_range_path))
+        p = threading.Thread(target=self._save_new_range)
         p.start()
 
-    def cut_game_video(self):
+    def _save_new_range(self):
+        if self.root == "":
+            print("先指定视频文件")
+            return
+        
+        df = self.convert_dict_to_dataframe(self.data_dict)
+        if _check_cut_range(df) == True:
+            df.to_csv(self.cut_range_path, index=False, header=False)
+            print("Save cut range successfully!")
+
+    def cut_video(self):
         if not os.path.exists(self.cut_range_path): return None
         cut_game_record(self.root, THREADS, individual=False)
 
     def change_cut_button1(self, text):
-        self.cut_button1.setText(text)
+        self.cut_button.setText(text)
 
     def change_cut_button2(self, text):
-        self.cut_button2.setText(text)
+        self.clear_cache_button.setText(text)
 
     """
     ================== Connect to the Button 7. ===================
@@ -652,38 +690,19 @@ class CutRange(QMainWindow):
             self.data_dict[colored_row][colored_col].setStyleSheet("QLineEdit { background-color: white; }")
             self.data_dict[i][j].setStyleSheet("QLineEdit { background-color: gray; }")
             self.colored_widget = (i, j)
+            
+    def _get_maximum_length(self):
+        max_val = 0
+        res_length = [0 for i in range(len(self.data_dict))]
+        for i in range(1, len(self.data_dict), 2):
+            val = self.data_dict[i]
+            tmp_tL = round(float(val[4].text()), 2)
+            tmp_tR = round(float(val[7].text()), 2)
+            tmp_val = tmp_tR - tmp_tL
+            res_length[i] = tmp_val
+            if tmp_val > max_val: max_val = tmp_val
+        return res_length, max_val
 
-
-def _save_new_range(data_dict, root, cut_range_path):
-    all_choose = True
-    t_ranges = []
-    for i in range(len(data_dict.keys())):
-        if len(data_dict[i])==1: continue
-        if data_dict[i][0].isChecked():
-            t1 = round(float(data_dict[i][4].text()),2)
-            t2 = round(float(data_dict[i][7].text()),2)
-            t_ranges.append((t1, t2))
-        elif data_dict[i][1].isChecked():
-            t1 = round(float(data_dict[i][4].text()),2)
-            t2 = round(float(data_dict[i][7].text()),2)
-            t_ranges.append((t1, t2))
-        elif data_dict[i][2].isChecked():
-            continue
-        else:
-            all_choose = False
-
-    if all_choose==True:
-        if root == "":
-            print("先指定视频文件")
-            return
-    # Combine Ranges
-    t_ranges = combine_ranges(t_ranges, 1)
-    # Remove Short Noise?
-    # Write Ranges to file
-    df = pd.DataFrame(t_ranges)
-    df.to_csv(cut_range_path, index=False, header=False)
-    print("Save cut range successfully!")
-    _check_cut_range(df)
 
 def _check_cut_range(df):
     """
@@ -692,16 +711,20 @@ def _check_cut_range(df):
     # 检查第一行
     if df.iat[0, 0] > df.iat[0, 1]:
         print("第1行tL>tR")
-        return None
+        return False
     for i in range(1, len(df)):
         if df.iat[i-1, 1] > df.iat[i, 0]:
             print(f"第{i}行tR>第{i+1}行tL")
+            return False
         if df.iat[i, 0] > df.iat[i, 1]:
             print(f"第{i+1}行tL>tR")
-            return None
+            return False
     print("Cut range no problem!")
-    print("Total length: %s h %s min %s sec."%seconds_to_hms(sum(df.iloc[:,1] - df.iloc[:, 0])))
+    print("Total length: %s h %s min %s sec. %s"%seconds_to_hms(sum(df.iloc[:,1] - df.iloc[:, 0])))
+    return True
 
+
+        
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
