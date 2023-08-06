@@ -4,45 +4,27 @@ import os
 from .export_voice_track import get_second_track
 # import matplotlib.pyplot as plt
 
-def get_dB_from_mp3(path):
-    sound = AudioSegment.from_file(path, format="mp3")
-
+def get_dB_from_mp3(audiopath):
+    sound = AudioSegment.from_file(audiopath, format="mp3")
     time = [i/1000 for i in range(len(sound))]
     dbfs_list = [sound[i].rms for i in range(len(sound))]
     dbfs_array = np.array(dbfs_list)
-    dbfs_min = min(dbfs_array[dbfs_array != -np.inf])
-    dbfs_array[dbfs_array == -np.inf] = dbfs_min
-    dbfs_array = dbfs_array - dbfs_min
-    dbfs_array = dbfs_array/max(dbfs_array)
+    dbfs_array = 20*np.log10(dbfs_array)
+    dbfs_array[dbfs_array==-np.inf]=0
     return time, list(dbfs_array)
 
+
 def get_dB_from_video(videopath):
-    audio_path = get_second_track(videopath)
-    tlst, dBlst = get_dB_from_mp3(audio_path)
-    os.remove(audio_path)
+    audiopath = get_second_track(videopath)
+    tlst, dBlst = get_dB_from_mp3(audiopath)
     return tlst, dBlst
 
 
 if __name__ == "__main__":
-    get_dB_from_mp3(r"E:\游戏视频\2023-04-29 剪辑速率测试\microphone_audio.mp3")
-
-    # import pandas as pd
-    # df = pd.read_csv(r"E:\游戏视频\2023-04-29 剪辑速率测试\分贝数据.csv")
-
-    # path = r"E:\游戏视频\2023-04-29 剪辑速率测试\microphone_audio.mp3"
-    # sound = AudioSegment.from_file(path, format="mp3")
-
-    # time = [i/1000 for i in range(len(sound))]
-    # dbfs_list = [sound[i].rms for i in range(len(sound))]
-    # dbfs_array = np.array(dbfs_list)
-    # dbfs_min = min(dbfs_array[dbfs_array != -np.inf])
-    # dbfs_array[dbfs_array == -np.inf] = dbfs_min
-    # dbfs_array = dbfs_array - dbfs_min
-    # dbfs_array = dbfs_array/max(dbfs_array)
-    
-
-    # plt.plot(time, dbfs_array)
-    # plt.plot(df["time"], df["dB"]/max(df["dB"]), c="r")
-    # plt.ylabel('dBFS')
-    # plt.xlabel('Time (s)')
+    pass
+    # time, dB_lst = get_dB_from_video(r"E:\游戏视频\2023-05-13 【王国之泪】P06 访问水神殿\2023-05-13 21-58-28.mp4")
+    # plt.plot(time, dB_lst, label="pre")
+    # time, dB_lst = get_dB_from_video(r"E:\游戏视频\2023-08-01【王国之泪】P23\2023-08-01 18-35-43.mp4")
+    # plt.plot(time, dB_lst, label="aft")
+    # plt.legend()
     # plt.show()

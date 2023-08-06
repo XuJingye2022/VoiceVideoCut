@@ -48,7 +48,7 @@ class CutRange(QMainWindow):
         self.window_title = "Adjust Cut Range"
         self.video_w = 1200
         self.video_h = 675
-        self.scroll_area_w = 570
+        self.scroll_area_w = 550
         self.slider_h = 15
         self.button_w = int(floor(self.video_w-70)/8)
         self.button_h = 30
@@ -62,6 +62,7 @@ class CutRange(QMainWindow):
         self.output_cut_video = "output_cut.mp4"
         self.speech_range_path = ""
         self.cut_range_path = ""
+        self.cache_path = ""
         self.data_dict = dict()
         self.duration = 0           # Video Length
         self.widgets_number_per_page = 30
@@ -219,6 +220,7 @@ class CutRange(QMainWindow):
             videoname = filename.split(".")[0]
             self.speech_range_path = os.path.join(self.root, videoname+"_SpeechRange.csv")
             self.cut_range_path    = os.path.join(self.root, videoname+"_CutRange.csv")
+            self.cache_path        = os.path.join(self.root, videoname+"_cache.txt")
             self.duration = self.tR = get_duration(filepath, SETTINGS)
             video_url = QUrl.fromLocalFile(os.path.abspath(filepath))
             media_content = QMediaContent(video_url)
@@ -283,7 +285,7 @@ class CutRange(QMainWindow):
                 # Plot datas
                 color = self._cal_color(time_length_list[idx], max_time_length)
                 self.data_dict[idx][9].setStyleSheet(f"background-color: {color}")
-                self.data_dict[idx][9].setText(str(round(100*time_length_list[idx]/max_time_length, 1)))
+                self.data_dict[idx][9].setText(str(round(time_length_list[idx], 2)) + "s")
                 for j in range(10):
                     self.scroll_layout.addWidget(self.data_dict[idx][j], row, j)
         # Set the widget for the scroll area
@@ -380,7 +382,7 @@ class CutRange(QMainWindow):
         tR_ics_btn.clicked.connect(self._increase_text_and_play_tR_by_key)
         # 添加表示时间长短的色块
         color_block = QLabel(self)
-        color_block.setFixedSize(50, 25)
+        color_block.setFixedSize(60, 25)
         # 事件绑定： 光标更改， 即刻更改播放范围
         line_edit0.cursorPositionChanged.connect(self._tL_select)
         line_edit1.cursorPositionChanged.connect(self._tR_select)
@@ -644,7 +646,7 @@ class CutRange(QMainWindow):
 
     def cut_video(self):
         if not os.path.exists(self.cut_range_path): return None
-        cut_game_record(self.root, THREADS, individual=False)
+        cut_game_record(self.root, THREADS)
 
     def change_cut_button1(self, text):
         self.cut_button.setText(text)
@@ -659,7 +661,7 @@ class CutRange(QMainWindow):
         if self.root == "":
             QMessageBox.information(self, "Error", "???\nNo video file has selected!")
             return None
-        _, file_list = get_all_suffixs_files(self.root, [".csv", ".mkv"])
+        _, file_list = get_all_suffixs_files(self.root, [".csv", ".mkv", ".mp3"])
         for file in file_list:
             if file.endswith("CutRange.csv"):
                 continue

@@ -1,1 +1,0 @@
-cut_game_record

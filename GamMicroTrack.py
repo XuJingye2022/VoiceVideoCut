@@ -9,7 +9,8 @@ import subprocess
 import numpy as np
 import pandas as pd
 
-from moviepy.editor import VideoFileClip, concatenate_videoclips
+from moviepy.editor import VideoFileClip, concatenate_videoclips, AudioFileClip, concatenate_audioclips, CompositeVideoClip
+from moviepy.audio.fx import multiply_volume
 from multipledispatch import dispatch, variadic
 import toml
 
@@ -104,18 +105,14 @@ class Gam:
 
     def remove_noise(self, time_lst: list) -> list:
         """
-        前后0.5s内没有声音的，视为噪声
+        前后一段时间内没有声音的，视为噪声
         """
+        tmp_lst = [(max(self.min_t, t - 0.001), min(self.max_t, t + 0.001)) for t in time_lst]
+        tmp_lst = combine_ranges(tmp_lst, 0)
         res_lst = []
-        if abs(time_lst[1] - time_lst[0]) < self.noise_sig_length:
-            res_lst.append(time_lst[0])
-        for i in range(1, len(time_lst) - 1):
-            cond1 = abs(time_lst[i] - time_lst[i - 1]) < self.noise_sig_length
-            cond2 = abs(time_lst[i + 1] - time_lst[i]) < self.noise_sig_length
-            if cond1 and cond2:
-                res_lst.append(time_lst[i])
-        if abs(time_lst[-1] - time_lst[-2]) < self.noise_sig_length:
-            res_lst.append(time_lst[-1])
+        for t1, t2 in tmp_lst:
+            if t2 - t1 >= self.noise_sig_length:
+                res_lst.append((t1, t2))
         return res_lst
 
     def remove_dB_small(self, t_ranges, tlst, dBlst):
@@ -125,7 +122,7 @@ class Gam:
         for i in range(len(t_ranges)-1,-1, -1):
             t1, t2 = t_ranges[i]
             df = df_dB[(t1<=df_dB["time"]) & (df_dB["time"]<=t2)]
-            if np.max(df["dB"]) < SETTINGS["Gam"]["cri_relative_dB"]:
+            if np.max(df["dB"]) < SETTINGS["Gam"]["cri_dB"]:
                 del t_ranges[i]
         return t_ranges
 
@@ -148,7 +145,7 @@ class Gam:
             df.to_csv(abs_audio_volume_path, index=False)
         # Select volumn data
         self.max_t = max(df["time"])
-        df = df[(df["dB"] > 0.01)]      # 这里多保留一些数据，因为存在低声嘀咕的情况
+        df = df[(df["dB"] > SETTINGS["Gam"]["cri_dB"])]      # 这里多保留一些数据，因为存在低声嘀咕的情况
         df.reset_index(inplace=True, drop=True)
         # Load time and volumn data
         t_lst = list(df["time"])
@@ -156,10 +153,10 @@ class Gam:
 
         # ========== Deal with volumn data =========
         # 1. Remove spike noise
-        t_lst_remove_noise = self.remove_noise(t_lst)
-        # 2. Transform time point to time range
-        t_ranges = self.from_tpoints_to_tranges(t_lst_remove_noise)
-        # 3. Combine time range, get Speech Ranges:
+        t_ranges = self.remove_noise(t_lst)
+        # 2. Extend time range: voice growth and decay
+        t_ranges = [(max(self.min_t, a-self.growth_or_decay_time_of_voice), min(self.max_t, b+self.growth_or_decay_time_of_voice))
+                    for a, b in t_ranges]
         t_ranges = combine_ranges(t_ranges, 2*self.growth_or_decay_time_of_voice + 0.01)
         # 4. Expand ranges and Combine
         t_ranges = [(max(self.min_t, a-self.pre_t), min(self.max_t, b+self.aft_t)) for a, b in t_ranges]
@@ -169,6 +166,7 @@ class Gam:
         # 7. Remove short noise
         # 这一段不能前置，因为可能会去除一些语气词
         t_ranges = list(filter(lambda x: x[1]-x[0]-self.pre_t-self.aft_t-2*self.growth_or_decay_time_of_voice>self.noise_sig_length, t_ranges))
+        print(pd.DataFrame(t_ranges))
         # ==========================================
         print("分段数量: ", len(t_ranges))
         # ============== 总时长 =============
@@ -183,97 +181,48 @@ class Gam:
         df.to_csv(self.cutSetPath, index=False, header=False)
 
 
-def cut_game_video_single_file(record_name, output_name, record_root, nthreads):
-    """
-    `record_name`: 游戏录屏文件, `.mp4`格式.
 
-    `output_name`: 输出视频文件.
-
-    `record_root`: 游戏录屏根目录， 里面可能存在多个录屏文件
-
-    `nthreads`: 导出线程数.
-    """
-    cut_range_name = record_name.split(".")[0] + "_CutRange.csv"        # 剪辑时间范围的DataFrame. `index=False, headers=False`.
-    cut_range_path = os.path.join(record_root, cut_range_name)          # 剪辑时间范围的完整路径
-    record_path = os.path.join(record_root, record_name)                # 录屏的完整路径
-    output_folder = os.path.join(record_root, "Output")                 # 存放输出视频的文件夹
-    output_path = os.path.join(output_folder, output_name)              # 相应输出视频的完整路径
-    # 创建切割素材文件夹
-    if not os.path.exists(output_folder): os.makedirs(output_folder)
-
-    # Load video clip.
-    all_clip = VideoFileClip(record_path)
-    # Load cut time ranges.
-    df = pd.read_csv(cut_range_path, names=["start", "end"])
-    clip_lst = []
-    for i in range(0, len(df)):
-        t1, t2 = df.loc[i, ["start","end"]]
-        clip_lst.append(all_clip.subclip(t1, t2).crossfadein(0.3).crossfadeout(0.3))
-    # 组合
-    video = concatenate_videoclips(clip_lst, method="chain")
-    video.write_videofile(output_path, threads=nthreads)
-    # 关闭各个锁定的clip
-    all_clip.close()
-    for clip in clip_lst: clip.close()
-
-def cut_game_video_multifile_individual(record_root, nthreads):
-    """
-    `record_root`: 游戏录屏根目录， 里面可能存在多个录屏文件
-
-    `nthreads`: 导出线程数.
-    """
-    record_names, _ = get_all_suffixs_files(record_root, [".mp4"])
-    if len(record_names) == 1:
-        cut_game_video_single_file(record_names[0], "output_cut.mp4", record_root, nthreads)
-    else:
-        for i, record_name in enumerate(record_names):
-            if i==0: continue # 跳过第一个文件
-            print(i, " ", record_name)
-            cut_game_video_single_file(record_name, "%s.mp4"%i, record_root, nthreads)
-        str1 = " ".join(['-i "%s"'%os.path.join(record_root, "Output", str(j)+".mp4") for j in range(len(record_names))])
-        str2 = os.path.join(record_root, "Output", "output_cut.mp4")
-        command = 'ffmpeg %s -codec copy "%s"'%(str1, str2)
-        print(command)
-        subprocess.call(command, shell=True)
-
-def cut_game_video_multifile_together(record_root, nthreads):
+def cut_game_record(record_root, nthreads):
     """
     `record_root`: 游戏录屏根目录， 里面可能存在多个录屏文件
 
     `nthreads`: 导出线程数.
     """
     output_folder = os.path.join(record_root, "Output")                 # 存放输出视频的文件夹
-    output_path = os.path.join(output_folder, "output_cut.mp4")         # 相应输出视频的完整路径
+    video_output_path = os.path.join(output_folder, "output_cut.mp4")   # 相应输出视频的完整路径
+    audio_output_path = os.path.join(output_folder, "output_cut.mp3")
     # 创建切割素材文件夹
     if not os.path.exists(output_folder): os.makedirs(output_folder)
 
     record_names, _ = get_all_suffixs_files(record_root, [".mp4"])
-    clip_lst = []
+    video_clip_lst = []
+    micro_clip_lst = []
     for i, record_name in enumerate(record_names):
         print(record_name)
-        cut_range_name = record_name.split(".")[0] + "_CutRange.csv"        # 剪辑时间范围的DataFrame. `index=False, headers=False`.
-        cut_range_path = os.path.join(record_root, cut_range_name)          # 剪辑时间范围的完整路径
-        record_path = os.path.join(record_root, record_name)                # 录屏的完整路径
-        
-        # Load video clip.
-        print(record_path)
-        all_clip = VideoFileClip(record_path)
+        cut_range_name    = record_name.split(".")[0] + "_CutRange.csv"        # 剪辑时间范围的DataFrame. `index=False, headers=False`.
+        cut_range_path    = os.path.join(record_root, cut_range_name)          # 剪辑时间范围的完整路径
+        record_path       = os.path.join(record_root, record_name)             # 录屏的完整路径
+        # Load video and microphone.
+        all_video_clip = VideoFileClip(record_path)
+        all_micro_clip = AudioFileClip(change_suffix(record_path, "mp3"))
         # Load cut time ranges.
         df = pd.read_csv(cut_range_path, names=["start", "end"])
         for i in range(0, len(df)):
             t1, t2 = df.loc[i, ["start","end"]]
-            clip_lst.append(all_clip.subclip(t1, t2).crossfadein(0.3).crossfadeout(0.3))
-    # 组合
-    video = concatenate_videoclips(clip_lst, method="chain")
-    video.write_videofile(output_path, threads=nthreads)
-    # 关闭各个锁定的clip
-    all_clip.close()
-    for clip in clip_lst: clip.close()
-        
-
-def cut_game_record(root, nthreads, individual=False):
-    if individual==False:
-        cut_game_video_multifile_together(root, nthreads)
-    else:
-        cut_game_video_multifile_individual(root, nthreads)
-
+            # 视频Clip
+            video_clip = all_video_clip.subclip(t1, t2).crossfadein(0.3).crossfadeout(0.3)
+            video_clip.audio = video_clip.audio.audio_normalize()
+            video_clip_lst.append(video_clip)
+            # 麦克风clip
+            micro_clip_lst.append(all_micro_clip.subclip(t1, t2))
+    # 组合并保存麦克风音频
+    micro_audio = concatenate_audioclips(micro_clip_lst)
+    micro_audio.write_audiofile(audio_output_path)
+    all_micro_clip.close()
+    for clip in micro_clip_lst: clip.close()
+    # 组合并保存视频
+    video = concatenate_videoclips(video_clip_lst, method="chain")
+    video.write_videofile(video_output_path, threads=nthreads)
+    all_video_clip.close()
+    for clip in video_clip_lst: clip.close()
+    
