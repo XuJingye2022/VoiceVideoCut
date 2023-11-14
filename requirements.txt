@@ -1,5 +1,12 @@
-numpy
+toml
 pandas
+numpy
 moviepy
 PyQt5
 pydub
+portion
+openai-whisper
+opencc
+multipledispatch
+opencv-python
+srt

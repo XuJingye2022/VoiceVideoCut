@@ -1,22 +1,48 @@
 [outputsettings]                      # 横屏
-fps = 60
+fps = 30
 resolution_w = 1920
 resolution_h = 1080
-resolution_width_preview = 360
-resolution_height_preview = 240
+resolution_w_preview = 320
+resolution_h_preview = 180
 
 [Gam]
-speedx = 4                              # 不讲话部分几倍速
-pre_time = 3                            # 讲话之前留出多少时间
-aft_time = 1                            # 讲话之后留出多少时间
-bet_time = 5.01                         # 两段话中间间隔多少时间
-noise_sig_length = 0.2                  # 小于多少秒的信号视为噪声
-growth_or_decay_time_of_voice = 0.5     # 讲话声音的衰减、增长时间，避免我采取的阈值导致声音突然出现和中断
-threads = 7                             # 剪辑时用多少线程
-cri_dB = 40                             # 多少分贝数视作有效人声？
+speech_channel = 1                      # 从0开始计数的麦克风音轨
+speedx = 8                              # 不讲话部分几倍速
+pre_time = 2                            # 讲话之前留出多少时间，至少大于声音增长、衰减时间
+                                        # 休闲感的剪辑，推荐5
+                                        # 紧凑感的剪辑，推荐2
+aft_time = 0                            # 讲话之后留出多少时间，至少大于声音增长、衰减时间
+                                        # 休闲感的剪辑，推荐2
+                                        # 紧凑感的剪辑，推荐0
+bet_time = 4.01                         # 两段话中间间隔多少时间，可能声音衰减、增长时间也包含其中，应该略大于`pre_time`+`aft_time`
+                                        # 休闲感的剪辑，推荐`pre_time`+`aft_time`+5
+                                        # 紧凑感的剪辑，推荐`pre_time`+`aft_time`+2
+noise_sig_length = 0.1                  # 小于多少秒的信号视为噪声
+growth_or_decay_time_of_voice = 0.5     # 讲话声音的衰减、增长时间，避免我采取的阈值导致声音突然出现和中断。数值小一些，可以帮助字幕更短一些
+threads = 4                             # 剪辑时用多少线程
+cri_dB_ratio = 0.4                      # 多少分贝数视作有效人声？这个是临界分贝数/max_dB
+max_dB = 90                             # 最大分贝数。程序使用的分贝数为正值。但是Adobe Premiere和OBS使用的负值——最大分贝为0。
+                                        # 这里max_dB相当于OBS中的0分贝。可能不同电脑0分贝不同。
+
 
 
 [supportedFormat]
 video = [".mp4", ".MP4"]
 picture = [".jpg", ".png", "jpeg", ".JPG", ".PNG", "JPEG", ".GIF", ".gif"]
 
+
+[whisper]
+sample_rate = 16000
+model = "medium"                         # 支持["tiny", "base", "small", "medium", "large", "large-v2"]
+device = "cuda"                          # 支持["cpu","cuda"]
+lang = "zh"                              # 支持
+                                         # "zh","en","Afrikaans","Arabic","Armenian","Azerbaijani"
+                                         # "Belarusian","Bosnian","Bulgarian","Catalan","Croatian"
+                                         # "Czech","Danish","Dutch","Estonian","Finnish","French"
+                                         # "Galician","German","Greek","Hebrew","Hindi","Hungarian"
+                                         # "Icelandic","Indonesian","Italian","Japanese","Kannada"
+                                         # "Kazakh","Korean","Latvian","Lithuanian","Macedonian","Malay"
+                                         # "Marathi","Maori","Nepali","Norwegian","Persian","Polish"
+                                         # "Portuguese","Romanian","Russian","Serbian","Slovak","Slovenian"
+                                         # "Spanish","Swahili","Swedish","Tagalog","Tamil","Thai","Turkish"
+                                         # "Ukrainian","Urdu","Vietnamese","Welsh"
