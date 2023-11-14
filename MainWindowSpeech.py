@@ -50,6 +50,7 @@ from math import floor
 
 from basic_tools import (
     SpeechVolume,
+    SpeechVAD,
     SubLineEdit,
     get_duration,
     get_all_files_with_extensions,
@@ -403,13 +404,20 @@ class CutRange(QMainWindow):
             micro_audio_path = change_file_extension(
                 self.abs_video_path, "mp3"
             )
-            if not os.path.exists(micro_audio_path):
-                raise ("音轨导出失败")
 
-            logging.info("即将启用whisper分析语音...")
-            proj_vol = SpeechVolume(micro_audio_path, SETTINGS)
-            proj_vol.get_time_segments_of_speech()  # 基于音量计算的语音范围
-            res = proj_vol.transcribe()  # 转义
+            if os.path.exists(micro_audio_path):
+                logging.info("即将启用whisper分析语音...")
+                proj = SpeechVolume(micro_audio_path, SETTINGS)
+                proj.get_time_segments_of_speech()  # 基于音量计算的语音范围
+            else:
+                logging.info("麦克风音轨导出失败")
+                logging.info("即将采用VAD进行语音识别第1音轨")
+                get_audio_track(self.abs_video_path, 0)
+                logging.info("即将启用whisper分析语音...")
+                proj = SpeechVAD(micro_audio_path)
+                proj.get_time_segments_of_speech()
+
+            res = proj.transcribe()  # 转义
             save_dataframe(
                 self.speech_range_path, res, SETTINGS["whisper"]["sample_rate"]
             )
@@ -421,9 +429,6 @@ class CutRange(QMainWindow):
         self.adjust_scroll_layout_height(25 * self.max_idx)
         # 通过窗口来进行编辑
         self._plot_markdown(df)
-
-    def analyze_speech_by_whisper():
-        pass
 
     def _plot_markdown(self, df):
         for i, (_, row_content) in enumerate(df.iterrows()):

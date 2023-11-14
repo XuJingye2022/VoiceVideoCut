@@ -67,3 +67,53 @@ VOICEVIDEOCUT
     | clip_video.py         # 实行基本的剪辑操作
     | divide_speech.py      # 划分讲话的时间段
 ```
+
+## 为什么优先采用双音轨
+这里是VAD+whisper方案划分失败的案例。
+
+```
+[
+    {
+        'text': '你到底抽不出来',
+        'segments': [
+            {
+                'id': 0,
+                'seek': 0,
+                'start': 0.0,
+                'end': 2.0,
+                'text': '你到底抽不出来',
+                'tokens': [50364, 2166, 33883, 46022, 1960, 44561, 50464],
+                'temperature': 0.0,
+                'avg_logprob': -0.8920868039131165,
+                'compression_ratio': 0.65625,
+                'no_speech_prob': 0.11517102271318436
+            }
+        ], 
+        'language': 'zh',
+        'origin_timestamp': (29088, 384480)  # (1.818 sec, 24.03 sec)
+    }, 
+    {
+        'text': '啊,對,要建房子', 
+        'segments': [
+            {
+                'id': 0,
+                'seek': 0,
+                'start': 0.0,
+                'end': 1.8,
+                'text': '啊,對,要建房子', 
+                'tokens': [50364, 4905, 11, 2855, 11, 4275, 34157, 38242, 7626, 50454],
+                'temperature': 0.0, 
+                'avg_logprob': -0.43075110695578833, 
+                'compression_ratio': 0.6896551724137931, 
+                'no_speech_prob': 0.016884278506040573
+            }
+        ],
+        'language': 'zh',
+        'origin_timestamp': (426912, 456160)   # (26.682 sec, 28.51 sec)
+    }
+]
+```
+注意`origin_timestamp`后的注释，为换算成秒的结果。
+第一段的范围太大了，而whisper只在其中2秒的范围内识别出了文本。
+但是只知道whisper识别的有用的长度是2 sec，具体从哪个时间开始的，不知道。
+通常的做法是，取`origin_timestamp`的开头两秒，但是这里，我正确的语音出现的时间却是在后两秒。

@@ -1,15 +1,21 @@
-from abc import ABC, abstractmethod
-from typing import Literal
-from pydub import AudioSegment
+import time
+import logging
 import numpy as np
 import ffmpeg
 import whisper
-from tqdm import tqdm
-import logging
 import toml
+import torch
+from abc import ABC, abstractmethod
+from typing import Literal
+from pydub import AudioSegment
+from tqdm import tqdm
 
+from .segments_mani import (
+    expand_time_segments,
+    remove_noise,
+    combine_time_segments
+)
 
-from .segments_mani import expand_time_segments, remove_noise
 
 LANG = Literal[
     "zh",
@@ -97,7 +103,6 @@ class AbstractSpeech(ABC):
         self.device = device
         self.audio_array = self.load_audio_array_data(audiopath, sr)
         self.whisper_model = whisper.load_model(model_name, device)
-        self.speech_time_segments = None
         self.speech_array_indices = None
 
     @abstractmethod
@@ -194,20 +199,16 @@ class SpeechVolume(AbstractSpeech):
     def _detect_voice_activity(self, time_arr, dB_arr):
         """Detect voice activity according to volume.
 
-        This function will change `self.speech_time_segments`
-        and `self.speech_array_indices`
+        This function will change `self.speech_array_indices`
         """
-        max_t = max(time_arr)
+        max_t = float(max(time_arr))
         cri_dB = self.cri_dB_ratio * max(dB_arr)
         time_segments = remove_noise(
-            list(time_arr[dB_arr > cri_dB]),
-            max_t=max_t,
-            noise_sig_length=self.noise_len,
+            list(time_arr[dB_arr > cri_dB]), max_t, self.noise_len,
         )
         time_segments = expand_time_segments(
             time_segments, self.growth_decay_time, self.growth_decay_time, 0, max_t
         )
-        self.speech_time_segments = time_segments
         self.speech_array_indices = [
             (
                 int(round(self.sr * tL)),
@@ -224,7 +225,39 @@ class SpeechVAD(AbstractSpeech):
         super().__init__(audiopath, method="vad")
 
     def get_time_segments_of_speech(self):
-        pass
+        audio = self.load_audio_array_data(self.audiopath, self.sr)
+        self._detect_voice_activity(audio)
 
-    def _detect_voice_activity(self):
-        pass
+    def _detect_voice_activity(self, audio):
+        tic = time.time()
+        # torch load limit https://github.com/pytorch/vision/issues/4156
+        torch.hub._validate_not_a_forked_repo = lambda a, b, c: True
+        self.vad_model, funcs = torch.hub.load(
+            repo_or_dir="snakers4/silero-vad",
+            model="silero_vad",
+            trust_repo=True
+        )
+
+        fun_detect_speech = funcs[0]
+
+        speeches = fun_detect_speech(
+            audio, self.vad_model, sampling_rate=self.sr
+        )
+
+        # Remove too short segments
+        speeches = remove_noise(speeches, 1.0 * self.sr)
+
+        # Expand to avoid to tight cut. You can tune the pad length
+        speeches = expand_time_segments(
+            speeches, 0.2 * self.sr, 0.0 * self.sr, 0, audio.shape[0]
+        )
+
+        # Merge very closed segments
+        speeches = combine_time_segments(speeches, 0.5 * self.sr)
+
+        logging.info(
+            f"Done voice activity detection in {time.time() - tic:.1f} sec"
+        )
+        print(speeches)
+        print([(s["start"]/self.sr, s["end"]/self.sr) for s in speeches])
+        self.speech_array_indices = [(int(s["start"]), int(s["end"])) for s in speeches]
