@@ -19,7 +19,6 @@ from .segments_mani import (
 )
 
 from .divide_speech import divide_speech_in_mp3
-from .subtitle import get_mp3_content_in_folder
 from .speech import SpeechVAD, SpeechVolume
 from .save_whisper_results import (
     save_dataframe,
@@ -45,7 +44,6 @@ __all__ = [
     "union_of_time_segments",
     "expand_time_segments",
     "divide_speech_in_mp3",
-    "get_mp3_content_in_folder",
     "time_stamp_to_time_string",
     "time_string_to_time_stamp",
     "remove_noise",
