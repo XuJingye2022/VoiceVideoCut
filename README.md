@@ -1,45 +1,33 @@
 # VoiceVideoCut
-这个程序是用来剪辑双音轨的语音视频的。
+这个程序是用来裁切语音视频的。
 适合录制无特效的**视频教程**、**游戏录屏**、**反应视频**。
 
+初始是因为大量游戏录屏充斥着无意义的片段，因此希望精简一些。
 
 ## 这个程序可以做什么
-通过人声音轨, 找到连续的人声范围——即初始的剪辑范围. 
+通过纯人声音轨（目前也支持的混合音轨，但是效果很差）, 找到连续的人声范围——即初始的剪辑范围. 
 
 然后每个范围都可以在编辑界面中预览. 如果觉得这个范围需要扩展, 你可以通过`+1s`和`-1s`按钮来调整. 当然过于接近的范围最后会合并.
 
 最后, 你有两个导出方式:
-
 1. 删除其它范围, 
-
 2. 加速其它范围(感觉没用，暂时没做).
 
 
 ## 使用方法
-1. 下载整个程序. 有GPU的，自己根据自己CUDA版本，安装PyTorch.
-   
+1. 下载整个程序. 有GPU的，自己根据自己CUDA版本，安装PyTorch
 2. 安装[K-Lite Codec Pack](http://www.codecguide.com/download_k-lite_codec_pack_standard.htm).
-   
 3. 安装[OBS](https://obsproject.com/download).
-   
 4. 使用OBS录制之前, 点击`混音器 - 设置`, 并给单独给麦克风音轨2.
-
     ![](pics/2023-05-04%20075434.png)
-
     在OBS设置中, 设置视频类型为`mp4`, 且视频音轨选中`1`和`2`(其中音轨`2`就是麦克风音轨).
-
     ![](pics/2023-05-04%20075857.png)
-
 5. 录制视频.
-   
 6. 运行`Main.py`.
-   
 7. 通过`Open Video File`选择视频文件.
-   
 8. 点击`Analyze`分析人声的范围.
    * 当持续时间小于0.5s会被认为是噪声并删除掉——你可以在`GamMicroTrack.py`的120行更改设置.
    * 如果视频目录存在`SpeechRange.csv`, 将会直接读取. 想删除的话可以点击`Clear Cache`删除所有缓存文件.
-   
 9.  通过点击4个`-/+`符号, 调整剪辑片段的左右边界.
     如果你觉得这个片段不需要, 可以选择`Noise`单选框.
     你可以通过点击文本框(有时单机有时双击), 预览视频.
@@ -50,26 +38,39 @@
 
 ## 一些问题
 - 所有过程都是单线程, 尤其是导出视频时, 千万不能动主窗口.
-  
 - 代码可读性差了点.
-  
 - 用的时候小心点.
 
 
 ## 文件结构说明
 ```
 VOICEVIDEOCUT
-| README.md                 # 简单说明文档
-| settings.toml             # 剪辑设置文件，可在里面直接更改
-└ QSS-master                # 窗口设置文件
-└ pics                      # Markdown中会用到的图片
-└ utils                     # 自定义的一些代码
-    | clip_video.py         # 实行基本的剪辑操作
-    | divide_speech.py      # 划分讲话的时间段
+| README.md                     # 简单说明文档
+| settings.toml                 # 剪辑设置文件，可在里面直接更改
+└ QSS-master                    # 窗口设置文件
+└ pics                          # Markdown中会用到的图片
+└ basic_tools                   # 自定义的一些代码
+    | __init__.py               # 包初始化文件
+    | clip_video.py             # 实行基本的剪辑操作
+    | cut.py                    # 剪辑视频
+    | divide_speech.py          # 划分讲话的时间段
+    | export_audio_track.py     # 导出音轨
+    | file_mani.py              # 获取文件名、更改文件名后缀
+    | get_dB_from_mp3.py        # 获取音轨文件中的分贝值
+    | is_video_audio.py         # 判断是否是音视频文件
+    | pic_video_attribution.py  # 获取图片、视频的属性尺寸时长特性
+    | save_whisper_results.py   # 保存whisper语音分析的结果
+    | segments_mani.py          # 对识别出的语音片段范围进行扩展、合并等操作
+    | speech.py                 # 语音识别
+    | subtitle_line_edit.py     # 自定义的QLineEdit，用于编辑字幕的合并、分段操作
+    └ time_format.py            # 各种时间格式的转换
 ```
 
 ## 为什么优先采用双音轨
-这里是VAD+whisper方案划分失败的案例。
+纯人声音轨，可以：
+1. 避免与游戏中的人声混合。便于之后的whisper语音识别。
+
+2. 能让程序根据音量大小来提取讲话片段。根据我的体验，VAD效果没有根据音量的提取效果好。下面就是一个VAD+whisper方案划分失败的案例。
 
 ```
 [
@@ -114,6 +115,7 @@ VOICEVIDEOCUT
 ]
 ```
 注意`origin_timestamp`后的注释，为换算成秒的结果。
-第一段的范围太大了，而whisper只在其中2秒的范围内识别出了文本。
-但是只知道whisper识别的有用的长度是2 sec，具体从哪个时间开始的，不知道。
+
+第一段的范围太大了，足足将22秒的片段代入whisper。而whisper只在其中2秒的范围内识别出了文本。这2秒具体从哪个时间开始的到什么时间结束，完全不知道。
+
 通常的做法是，取`origin_timestamp`的开头两秒，但是这里，我正确的语音出现的时间却是在后两秒。
