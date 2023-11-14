@@ -597,7 +597,9 @@ class CutRange(QMainWindow):
             df.reset_index(drop=True)
             df = df.loc[:, ["start", "end"]]
             t_ranges = [(row["start"], row["end"]) for _, row in df.iterrows()]
-            t_ranges = expand_time_segments(t_ranges, PRE_T, AFT_T, 0, self.duration)
+            t_ranges = expand_time_segments(
+                t_ranges, PRE_T, AFT_T, 0, self.duration
+            )
             t_ranges = combine_time_segments(t_ranges, BET_T - PRE_T - AFT_T)
             df = pd.DataFrame(t_ranges, columns=["start", "end"])
             df.to_csv(self.cut_range_path, index=False)
@@ -608,7 +610,8 @@ class CutRange(QMainWindow):
         self.clear_scroll_layout()
         self.adjust_scroll_layout_height(25 * self.max_idx)
         dur = sum([df.at[i, "end"]-df.at[i, "start"] for i in range(len(df))])
-        print(f"视频长度变化: {round(self.duration,2)}s => {round(dur,2)}s，压缩率：{1-dur/self.duration}")
+        logging.info(f"视频长度变化: {self.duration:.2f}s => {dur:.2f}s")
+        logging.info(f"压缩率：{(1-dur/self.duration)*100.0:.2f}%")
         # 更新控件
         self._plot_cut_range(df)
 
@@ -846,7 +849,11 @@ class CutRange(QMainWindow):
 
     def play_video(self):
         if self.root == "":
-            QMessageBox.information(self, "Error", "???\nNo video file has selected!")
+            QMessageBox.information(
+                self,
+                "Error",
+                "???\nNo video file has selected!"
+            )
             return None
         if self.media_player.state() == QMediaPlayer.PlayingState:
             self.media_player.pause()
@@ -910,7 +917,11 @@ class CutRange(QMainWindow):
 
     def save_data(self):
         if self.root is None:
-            QMessageBox.information(self, "Error", "\nNo video file has selected!")
+            QMessageBox.information(
+                self,
+                "Error",
+                "\nNo video file has selected!"
+            )
             return
         print("模式：", self.mode)
         if self.mode == "sub":
@@ -939,7 +950,10 @@ class CutRange(QMainWindow):
                         float(self.get_data_widget(i, 8).text()),
                     )
                 )
-            time_segments = combine_time_segments(time_segments, max(1.01, BET_T - PRE_T - AFT_T))
+            time_segments = combine_time_segments(
+                time_segments,
+                max(1.01, BET_T - PRE_T - AFT_T)
+            )
             df = pd.DataFrame(time_segments, columns=["start", "end"])
             df.to_csv(self.cut_range_path, index=False)
             logging.info("保存剪辑范围成功！")
@@ -959,7 +973,11 @@ class CutRange(QMainWindow):
 
     def clear_cache(self):
         if self.root is None:
-            QMessageBox.information(self, "Error", "???\nNo video file has selected!")
+            QMessageBox.information(
+                self,
+                "Error",
+                "???\nNo video file has selected!"
+            )
             return None
         _, file_list = get_all_files_with_extensions(
             self.root, [".csv", ".mkv", ".mp3"]
