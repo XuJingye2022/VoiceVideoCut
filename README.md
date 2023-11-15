@@ -15,33 +15,34 @@
 
 
 ## 使用方法
-1. 下载整个程序. 有GPU的，自己根据自己CUDA版本，安装PyTorch
+1. 下载整个程序.
 2. 在`requirements.txt`同一级目录下, 用`pip3 install -r requirements.txt`安装依赖。
-3. 安装[K-Lite Codec Pack](http://www.codecguide.com/download_k-lite_codec_pack_standard.htm).
-4. 安装[OBS](https://obsproject.com/download).
-5. 安装ffmpeg，并在环境变量中添加`ffmpeg`的路径.
-6. 使用OBS录制之前, 点击`混音器 - 设置`, 并给单独给麦克风音轨2.
+3. 有GPU的，自己根据自己CUDA版本，自行安装PyTorch。没有GPU的也没关系，只是无法使用语音识别功能。
+4. 安装[K-Lite Codec Pack](http://www.codecguide.com/download_k-lite_codec_pack_standard.htm).
+5. 安装[OBS](https://obsproject.com/download).
+6. 安装ffmpeg，并在环境变量中添加`ffmpeg`的路径.
+7. 使用OBS录制之前, 点击`混音器 - 设置`, 并给单独给麦克风音轨2.
     ![](pics/2023-05-04%20075434.png)
     在OBS设置中, 设置视频类型为`mp4`, 且视频音轨选中`1`和`2`(其中音轨`2`就是麦克风音轨).
     ![](pics/2023-05-04%20075857.png)
-7. 录制视频.
-8. 运行`Main.py`.
-9. 通过`Open Video File`选择视频文件.
-10. 点击`Analyze`分析人声的范围.
+8. 录制视频.
+9. 运行`Main.py`.
+10. 通过`Open Video File`选择视频文件.
+11. 点击`Analyze`分析人声的范围.
    * 当持续时间小于0.5s会被认为是噪声并删除掉——你可以在`GamMicroTrack.py`的120行更改设置.
    * 如果视频目录存在`SpeechRange.csv`, 将会直接读取. 想删除的话可以点击`Clear Cache`删除所有缓存文件.
-11. 通过点击4个`-/+`符号, 调整剪辑片段的左右边界.
+12. 通过点击4个`-/+`符号, 调整剪辑片段的左右边界.
     如果你觉得这个片段不需要, 可以选择`Noise`单选框.
     你可以通过点击文本框(有时单机有时双击), 预览视频.
-12. 点击`Save New Range`保存剪辑范围到`CutRange.csv`. 再次点击`Analyze`, 就会加载`CutRange.csv`到编辑列表. 如果你不满意, 或者程序崩溃了, 只要`CutRange.csv`存在, 就可以继续编辑.
-13. 通过点击`Cut`剪辑视频。`Cut`意味着删除剪辑范围之外的片段;
-14. 点击`Clear Cache`清楚所有缓存文件.
+13. 点击`Save New Range`保存剪辑范围到`CutRange.csv`. 再次点击`Analyze`, 就会加载`CutRange.csv`到编辑列表. 如果你不满意, 或者程序崩溃了, 只要`CutRange.csv`存在, 就可以继续编辑.
+14. 通过点击`Cut`剪辑视频。`Cut`意味着删除剪辑范围之外的片段;
+15. 点击`Clear Cache`清楚所有缓存文件.
 
 
 ## 一些问题
 - 所有过程都是单线程, 尤其是导出视频时, 千万不能动主窗口.
 - 代码可读性差了点.
-- 用的时候小心点.
+- 没有防呆设计，用的时候只能按操作顺序来.
 
 
 ## 文件结构说明
