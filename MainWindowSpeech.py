@@ -161,7 +161,7 @@ class CutRange(QMainWindow):
             self.video_h + 30,
             self.button_w,
             self.button_h,
-            self.analyze_speech_by_volume,
+            self.analyze_speech,
         )
         self.load_cut_range_btn = self.create_QPushButton(
             "Load Cut Range",
@@ -384,7 +384,13 @@ class CutRange(QMainWindow):
     =============== Connect to the Button 2 ===============
     """
 
-    def analyze_speech_by_volume(self):
+    def analyze_speech(self):
+        """Analyze video speech.
+
+        It will try to analyze microphone track in `settings.toml`.
+
+        If not exist, it will try to analyze the first track.
+        """
         self.mode = "sub"
         self.mode0.setChecked(True)
         self.mode1.setCheckable(False)
@@ -413,6 +419,9 @@ class CutRange(QMainWindow):
                 logging.info("麦克风音轨导出失败")
                 logging.info("即将采用VAD进行语音识别第1音轨")
                 get_audio_track(self.abs_video_path, 0)
+                if not os.path.exists(micro_audio_path):
+                    logging.error("视频没有发现第1音轨")
+                    return
                 logging.info("即将启用whisper分析语音...")
                 proj = SpeechVAD(micro_audio_path)
                 proj.get_time_segments_of_speech()
