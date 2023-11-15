@@ -456,12 +456,12 @@ class CutRange(QMainWindow):
         checkbox.setChecked(checked)
         # 起始时间及其调整
         text_edit1 = QLineEdit()
-        text_edit1.setFixedWidth(70)
+        text_edit1.setFixedWidth(80)
         text_edit1.setAlignment(Qt.AlignLeft)
         text_edit1.setText(str(round(start, 3)))
         text_edit1.cursorPositionChanged.connect(self._tL_select)
         text_edit2 = QLineEdit()
-        text_edit2.setFixedWidth(70)
+        text_edit2.setFixedWidth(80)
         text_edit2.setAlignment(Qt.AlignLeft)
         text_edit2.setText(str(round(end, 3)))
         text_edit2.cursorPositionChanged.connect(self._tR_select)
@@ -648,8 +648,8 @@ class CutRange(QMainWindow):
         radiobutton1 = self.create_radio_button("Speech", buttongroup, typestr)
         radiobutton2 = self.create_radio_button("Noise", buttongroup)
 
-        line_edit0 = self.create_line_edit(str(start), 60)
-        line_edit1 = self.create_line_edit(str(end), 60)
+        line_edit0 = self.create_line_edit(str(start), 80)
+        line_edit1 = self.create_line_edit(str(end), 70)
 
         tL_dcs_btn = self.create_button(
             "-1", 25, 25, self._decrease_text_and_play_tL_by_key
