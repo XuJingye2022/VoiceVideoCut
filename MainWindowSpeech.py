@@ -428,10 +428,13 @@ class CutRange(QMainWindow):
 
             res = proj.transcribe()  # 转义
             save_dataframe(
-                self.speech_range_path, res, SETTINGS["whisper"]["sample_rate"]
+                self.speech_range_path,
+                res,
+                SETTINGS["whisper"]["sample_rate"],
+                SETTINGS["whisper"]["lang"],
             )
         df = pd.read_csv(self.speech_range_path)
-        df = df[df["use"] is True]
+        df = df[df["use"] == True]
         df.reset_index(drop=True)
         self.max_idx = len(df)
         self.clear_scroll_layout()

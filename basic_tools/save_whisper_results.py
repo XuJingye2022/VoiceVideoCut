@@ -5,15 +5,14 @@ import opencc
 
 cc = opencc.OpenCC("t2s")
 
-
-def save_dataframe(speech_range_path, transcribe_results, sample_rate):
+def save_dataframe(speech_range_path, transcribe_results, sample_rate, lang="zh"):
     df = pd.DataFrame(columns=["start", "end", "text", "use"])
 
     def _add_sub(df, start, end, text):
         df.loc[len(df)] = {
             "start": start,
             "end": end,
-            "text": cc.convert(text),
+            "text": cc.convert(text) if lang == "zh" else text,
             "use": True,
         }
         return df
