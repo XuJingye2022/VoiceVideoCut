@@ -481,10 +481,12 @@ class CutRange(QMainWindow):
         self.scroll_grid_layout.addWidget(text_edit3, i, 4)
 
     def on_backspace_at_start(self, sender_widget):
+        tR = self.tR
         for i in range(self.max_idx):
             if sender_widget == self.get_data_widget(i + 1, 4):
                 if i == 0:
                     break
+                tL = float(self.get_data_widget(i, 2).text())
                 self.get_data_widget(i, 3).setText(
                     self.get_data_widget(i + 1, 3).text()
                 )
@@ -507,8 +509,12 @@ class CutRange(QMainWindow):
                 self.remove_scroll_layout_row(self.max_idx)
                 self.update_max_idx(-1)
                 break
+        self.tL, self.tR = tL, tR
+        self.media_player.setPosition(int(round(tL * 1000)))
+        self.media_player.play()
 
     def on_enter_in_middle(self, sender_widget):
+        tR = self.tR
         cursor_position = sender_widget.cursorPosition()
         text = sender_widget.text()
         text1 = text[:cursor_position]
@@ -548,6 +554,7 @@ class CutRange(QMainWindow):
                     ),
                     3,
                 )
+                tL = cri_time
                 # i + 2行
                 self.get_data_widget(i + 2, 1).setChecked(
                     self.get_data_widget(i + 1, 1).isChecked()
@@ -562,8 +569,12 @@ class CutRange(QMainWindow):
                 self.get_data_widget(i + 1, 4).setText(text1)
                 self.media_player.setPosition(int(round(cri_time * 1000)))
                 break
+        self.tL, self.tR = tL, tR
+        self.media_player.setPosition(int(round(tL * 1000)))
+        self.media_player.play()
 
     def on_delete_at_end(self, sender_widget):
+        tL = self.tL
         for i in range(self.max_idx):
             if sender_widget == self.get_data_widget(i + 1, 4):
                 if i == self.max_idx - 1:
@@ -571,6 +582,7 @@ class CutRange(QMainWindow):
                 self.get_data_widget(i + 1, 3).setText(
                     self.get_data_widget(i + 2, 3).text()
                 )
+                tR = float(self.get_data_widget(i + 2, 3).text())
                 self.get_data_widget(i + 1, 4).setText(
                     self.get_data_widget(i + 1, 4).text()
                     + self.get_data_widget(i + 2, 4).text()
@@ -591,6 +603,9 @@ class CutRange(QMainWindow):
                 self.remove_scroll_layout_row(self.max_idx)
                 self.update_max_idx(-1)
                 break
+        self.tL, self.tR = tL, tR
+        self.media_player.setPosition(int(round(tL * 1000)))
+        self.media_player.play()
 
     """
     =============== Connect to the Button 3 ==============
