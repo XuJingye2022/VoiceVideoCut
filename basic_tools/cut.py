@@ -79,7 +79,7 @@ def cut_game_record(record_root, nthreads, preview=False):
                 "%s_%s.mp4" % (input_video_name, i)
             )
             tmp_video_path_lst.append(tmp_video_path)
-            # clip_video(abs_record_file, t1, t2, tmp_video_path, audio=True)
+            clip_video(abs_record_file, t1, t2, tmp_video_path, audio=True)
             i += 1
         all_cut_segments_list.append(tmp_cut_segments)
         all_subtitle_segments_list.append(tmp_sub_segments)
