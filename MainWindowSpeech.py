@@ -795,7 +795,7 @@ class CutRange(QMainWindow):
         tR = round(float(self.get_data_widget(i, 8).text()), 2) + increment
         if tR < tL + 0.01:
             print("数值太小")
-        elif tR > round(float(self.get_data_widget(i + 2, 5).text()), 2) - 0.01:
+        elif i < self.max_idx-1 and (tR > round(float(self.get_data_widget(i + 2, 5).text()), 2) - 0.01):
             print("数值太大")
         else:
             tR = min(self.duration, tR)
