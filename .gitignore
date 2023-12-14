@@ -2,4 +2,4 @@ basic_tools/__pycache__
 .gitignore
 __pycache__
 Upload.py
-*_snd.mp3
+input_list.txt

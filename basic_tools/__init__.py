@@ -27,6 +27,7 @@ from .save_whisper_results import (
 )
 from .subtitle_line_edit import SubLineEdit
 from .cut import cut_game_record
+from .clip_video import clip_video, combine_videos
 
 __all__ = [
     "get_audio_track",
@@ -54,5 +55,7 @@ __all__ = [
     "save_srt",
     "subtitle_segments_in_output_video",
     "SubLineEdit",
-    "cut_game_record"
+    "cut_game_record",
+    "clip_video",
+    "combine_videos"
 ]
