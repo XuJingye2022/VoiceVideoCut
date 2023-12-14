@@ -1,5 +1,4 @@
 [outputsettings]                      # 横屏
-fps = 60
 resolution_w = 1920
 resolution_h = 1080
 resolution_w_preview = 320
