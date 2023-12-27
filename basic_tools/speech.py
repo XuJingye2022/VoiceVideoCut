@@ -174,7 +174,7 @@ class AbstractSpeech(ABC):
 
     @staticmethod
     def load_audio_dB_data(audiopath):
-        sound = AudioSegment.from_file(audiopath, format="mp3")
+        sound = AudioSegment.from_file(audiopath, format="wav")
         time_arr = np.array([i / 1000 for i in range(len(sound))])
         dbfs_list = [sound[i].rms for i in range(len(sound))]
         dbfs_arr = (

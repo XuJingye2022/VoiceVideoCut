@@ -1,7 +1,7 @@
 # 第一按钮：选择视频
 #     选择后会：导入视频
 # 第二按钮：语音识别
-#     1. 导出`.mp3`麦克风音轨
+#     1. 导出`.wav`麦克风音轨
 #     2. 调用whisper分析麦克风录音，并保存至
 #         - `<videoname>_SpeechRange.csv`
 #        其格式为："time segments", "text"
@@ -408,7 +408,7 @@ class CutRange(QMainWindow):
             logging.info("即将导出麦克风音轨...")
             get_audio_track(self.abs_video_path, SPEECH_CHANNEL)
             micro_audio_path = change_file_extension(
-                self.abs_video_path, "mp3"
+                self.abs_video_path, "wav"
             )
 
             if os.path.exists(micro_audio_path):
@@ -1019,7 +1019,7 @@ class CutRange(QMainWindow):
             )
             return None
         _, file_list = get_all_files_with_extensions(
-            self.root, [".csv", ".mkv", ".mp3"]
+            self.root, [".csv", ".mkv", ".wav"]
         )
         for file in file_list:
             if file.endswith("CutRange.csv"):

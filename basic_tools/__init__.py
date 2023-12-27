@@ -18,7 +18,7 @@ from .segments_mani import (
     combine_time_segments,
 )
 
-from .divide_speech import divide_speech_in_mp3
+from .divide_speech import divide_speech_in_wav
 from .speech import SpeechVAD, SpeechVolume
 from .save_whisper_results import (
     save_dataframe,
@@ -44,7 +44,7 @@ __all__ = [
     "intersection_of_time_segments",
     "union_of_time_segments",
     "expand_time_segments",
-    "divide_speech_in_mp3",
+    "divide_speech_in_wav",
     "time_stamp_to_time_string",
     "time_string_to_time_stamp",
     "remove_noise",

@@ -4,11 +4,11 @@ from tqdm import tqdm
 import pandas as pd
 
 from .file_mani import change_file_extension
-from .get_dB_from_mp3 import get_dB_from_video
+from .get_dB_from_wav import get_dB_from_video
 from .segments_mani import combine_time_segments, remove_noise
 
 
-def divide_speech_in_mp3(video_path, audio_cache_folder, data_path, SETTINGS):
+def divide_speech_in_wav(video_path, audio_cache_folder, data_path, SETTINGS):
     """
     根据音量数据，得到需要剪辑的时间集合。
 
@@ -67,10 +67,10 @@ def divide_speech_in_mp3(video_path, audio_cache_folder, data_path, SETTINGS):
     ):
         name = str(i).rjust(5, "0")
         os.system(
-            f'ffmpeg -loglevel quiet -y -i "{video_path}" -map 0:a:{SPEECH_CHANNEL} -ss {tL} -to {tR} -vn "{audio_cache_folder}/{name}.mp3"'
+            f'ffmpeg -loglevel quiet -y -i "{video_path}" -map 0:a:{SPEECH_CHANNEL} -ss {tL} -to {tR} -vn "{audio_cache_folder}/{name}.wav"'
         )
-        df.loc[name + ".mp3", "start"] = tL
-        df.loc[name + ".mp3", "end"] = tR
+        df.loc[name + ".wav", "start"] = tL
+        df.loc[name + ".wav", "end"] = tR
 
     df.to_csv(data_path)
     print(data_path)

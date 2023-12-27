@@ -1,5 +1,5 @@
 """
-导出麦克风音轨成mp3文件
+导出麦克风音轨成wav文件
 """
 from .file_mani import change_file_extension
 import os
