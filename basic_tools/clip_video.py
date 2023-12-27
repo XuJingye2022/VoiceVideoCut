@@ -5,11 +5,11 @@ def clip_video(input_video: str, tL: float, tR: float, output_video: str, audio:
     """剪切视频
     """
     if audio is False:
-        print(f"ffmpeg -loglevel quiet -y -i {input_video} -an -ss {tL} -to {tR} {output_video}")
-        os.system(f"ffmpeg -loglevel quiet -y -i {input_video} -an -ss {tL} -to {tR} {output_video}")
+        print(f"ffmpeg -loglevel quiet -y -i {input_video} -an -ss {tL} -to {tR}  -c:v copy {output_video}")
+        os.system(f"ffmpeg -loglevel quiet -y -i {input_video} -an -ss {tL} -to {tR}  -c:v copy {output_video}")
     else:
-        print(f"ffmpeg -loglevel quiet -y -i {input_video} -ss {tL} -to {tR} {output_video}")
-        os.system(f"ffmpeg -loglevel quiet -y -i {input_video} -ss {tL} -to {tR} {output_video}")
+        print(f"ffmpeg -loglevel quiet -y -i {input_video} -ss {tL} -to {tR}  -c:v copy -c:a copy -map 0 {output_video}")
+        os.system(f"ffmpeg -loglevel quiet -y -i {input_video} -ss {tL} -to {tR}  -c:v copy -c:a copy -map 0 {output_video}")
 
 
 def clip_audio(input_audio: str, tL: float, tR: float, output_audio: str):
@@ -39,7 +39,7 @@ def combine_videos(input_video_lst, output_video):
             file.write(f"file '{video}'\n")
 
     # 使用ffmpeg执行合并操作
-    os.system(f'ffmpeg -loglevel quiet -y -f concat -safe 0 -i input_list.txt -c copy {output_video}')
+    os.system(f'ffmpeg -loglevel quiet -y -f concat -safe 0 -i input_list.txt -c:v copy -c:a copy -map 0 {output_video}')
 
     # 删除临时文件
     os.remove("input_list.txt")
