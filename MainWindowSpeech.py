@@ -987,6 +987,9 @@ class CutRange(QMainWindow):
                 max(1.01, BET_T - PRE_T - AFT_T)
             )
             df = pd.DataFrame(time_segments, columns=["start", "end"])
+            dur = (df["end"] - df["start"]).sum()
+            logging.info(f"视频长度变化: {self.duration:.2f}s => {dur:.2f}s")
+            logging.info(f"压缩率：{(1-dur/self.duration)*100.0:.2f}%")
             df.to_csv(self.cut_range_path, index=False)
             logging.info("保存剪辑范围成功！")
 

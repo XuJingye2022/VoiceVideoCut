@@ -11,7 +11,6 @@ from .clip_video import clip_video, combine_videos
 SETTINGS = toml.load("./settings.toml")
 MAX_DB = SETTINGS["Gam"]["max_dB"]
 CRI_DB_RATIO = SETTINGS["Gam"]["cri_dB_ratio"]
-FPS = SETTINGS["outputsettings"]["fps"]
 
 
 def get_volumex_of_video(max_dB_now):
