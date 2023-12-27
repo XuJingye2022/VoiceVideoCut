@@ -3,8 +3,8 @@ from pydub import AudioSegment
 from .export_audio_track import get_audio_track
 
 
-def get_dB_from_mp3(audiopath):
-    sound = AudioSegment.from_file(audiopath, format="mp3")
+def get_dB_from_wav(audiopath):
+    sound = AudioSegment.from_file(audiopath, format="wav")
     time = [i / 1000 for i in range(len(sound))]
     dbfs_list = [sound[i].rms for i in range(len(sound))]
     dbfs_array = np.array(dbfs_list)
@@ -15,5 +15,5 @@ def get_dB_from_mp3(audiopath):
 
 def get_dB_from_video(videopath, track_num):
     audiopath = get_audio_track(videopath, track_num)
-    tlst, dBlst = get_dB_from_mp3(audiopath)
+    tlst, dBlst = get_dB_from_wav(audiopath)
     return tlst, dBlst

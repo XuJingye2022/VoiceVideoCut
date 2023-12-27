@@ -13,7 +13,9 @@ def get_audio_track(videopath, track_num):
     `track_num`: 从`0`开始计数的数值
     """
     logging.info("正在导出麦克风音轨...")
-    audiopath = change_file_extension(videopath, "mp3")
+    # 我发现导出mp3格式和wav格式的音频长短不一样
+    # .mp3格式比视频更长, 后者则和视频相同
+    audiopath = change_file_extension(videopath, "wav")
     if os.path.exists(audiopath):
         logging.info("音频文件已存在")
     else:

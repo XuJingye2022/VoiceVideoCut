@@ -1,6 +1,6 @@
 from .export_audio_track import get_audio_track
 from .file_mani import get_all_files_with_extensions, change_file_extension
-from .get_dB_from_mp3 import get_dB_from_video, get_dB_from_mp3
+from .get_dB_from_wav import get_dB_from_video, get_dB_from_wav
 from .pic_video_attribution import get_duration, get_size
 from .time_format import (
     seconds_to_frame,
@@ -34,7 +34,7 @@ __all__ = [
     "get_all_files_with_extensions",
     "change_file_extension",
     "get_dB_from_video",
-    "get_dB_from_mp3",
+    "get_dB_from_wav",
     "get_duration",
     "get_size",
     "seconds_to_frame",
