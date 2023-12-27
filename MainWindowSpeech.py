@@ -434,6 +434,10 @@ class CutRange(QMainWindow):
                 SETTINGS["whisper"]["lang"],
             )
         df = pd.read_csv(self.speech_range_path)
+        # 检查两个片段是否边界相同，否则微调
+        for i in range(len(df)-1):
+            if df.at[i, "end"] == df.at[i+1, "start"]:
+                df.at[i, "end"] = df.at[i+1, "start"] - 0.001
         df = df[df["use"] == True]
         df.reset_index(drop=True)
         self.max_idx = len(df)
