@@ -40,6 +40,10 @@
 - 代码可读性差了点.
 - 没有防呆设计，用的时候只能按操作顺序来.
 
+## TODO
+- [ ] 秒数尝试更改为时间码`xx:xx:xx:xx`，`Hours:Minutes:Seconds:Frames`
+- [ ] 尝试QLineEdit通过方向键上下键调整时间。
+
 
 ## 文件结构说明
 ```

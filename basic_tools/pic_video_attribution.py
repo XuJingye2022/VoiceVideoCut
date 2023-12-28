@@ -58,14 +58,7 @@ def get_duration(abspath, settings=SETTINGS):
         exit()
 
 
-if __name__ == "__main__":
-    settings = toml.load("./settings.toml")
-    # vidpath = r"C:\Users\徐景晔\Pictures\Camera Roll\test.mp4"
-    # gifpath = r"C:\Users\徐景晔\Pictures\搞笑图片\007kPYPngy1hb5jpfa8lfg304q06b4qp.gif"
-    # print(get_size(gifpath, settings))
-    # print(get_size(vidpath, settings))
-    # print(get_duration(gifpath, settings))
-    # print(get_duration(vidpath, settings))
-    print(
-        get_duration(r"E:\游戏视频\2023-04-17 饥饿派画家2：迷失\2023-04-17 22-30-04.mkv", settings)
-    )
+def get_fps(abspath):
+    video = cv2.VideoCapture(abspath)
+    fps = video.get(cv2.CAP_PROP_FPS)
+    return fps

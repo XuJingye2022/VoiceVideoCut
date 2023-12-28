@@ -53,6 +53,7 @@ from basic_tools import (
     SpeechVAD,
     SubLineEdit,
     get_duration,
+    get_fps,
     get_all_files_with_extensions,
     change_file_extension,
     get_audio_track,
@@ -106,6 +107,7 @@ class CutRange(QMainWindow):
         self.mode = None  # 由于窗口会变化，需要知道模式。"sub"字幕编辑模式；"vid"视频剪辑模式
         self.max_idx = None
         self.duration = 0  # Video Length
+        self.fps = 0
         self.idx_play_now = 0  # idx of video playing
         self.colored_widget = (1, 1)
 
@@ -365,6 +367,7 @@ class CutRange(QMainWindow):
             self.speech_range_path = abs_path_without_ext + "_SpeechRange.csv"
             self.cut_range_path = abs_path_without_ext + "_CutRange.csv"
             self.duration = self.tR = get_duration(filepath, SETTINGS)
+            self.fps = get_fps(filepath)
             video_url = QUrl.fromLocalFile(os.path.abspath(filepath))
             media_content = QMediaContent(video_url)
             # 打开视频
@@ -464,12 +467,14 @@ class CutRange(QMainWindow):
         # 起始时间及其调整
         text_edit1 = QLineEdit()
         text_edit1.setFixedWidth(80)
-        text_edit1.setAlignment(Qt.AlignLeft)
+        text_edit1.setAlignment(Qt.AlignRight)
+        text_edit1.setInputMask("99:99:99:99")
         text_edit1.setText(str(round(start, 3)))
         text_edit1.cursorPositionChanged.connect(self._tL_select)
         text_edit2 = QLineEdit()
         text_edit2.setFixedWidth(80)
-        text_edit2.setAlignment(Qt.AlignLeft)
+        text_edit2.setAlignment(Qt.AlignRight)
+        text_edit2.setInputMask("0000.000")
         text_edit2.setText(str(round(end, 3)))
         text_edit2.cursorPositionChanged.connect(self._tR_select)
         text_edit3 = SubLineEdit(
@@ -671,7 +676,7 @@ class CutRange(QMainWindow):
         radiobutton2 = self.create_radio_button("Noise", buttongroup)
 
         line_edit0 = self.create_line_edit(str(start), 80)
-        line_edit1 = self.create_line_edit(str(end), 70)
+        line_edit1 = self.create_line_edit(str(end), 80)
 
         tL_dcs_btn = self.create_button(
             "-1", 25, 25, self._decrease_text_and_play_tL_by_key
