@@ -466,17 +466,17 @@ class CutRange(QMainWindow):
         checkbox.setChecked(checked)
         # 起始时间及其调整
         text_edit1 = QLineEdit()
-        text_edit1.setFixedWidth(80)
+        text_edit1.setFixedWidth(70)
         text_edit1.setAlignment(Qt.AlignRight)
-        text_edit1.setInputMask("99:99:99:99")
-        text_edit1.setText(str(round(start, 3)))
+        text_edit1.setText("{:.3f}".format(start))
         text_edit1.cursorPositionChanged.connect(self._tL_select)
+        text_edit1.keyPressEvent = self._tL_keyPress_Up_Or_Down
         text_edit2 = QLineEdit()
-        text_edit2.setFixedWidth(80)
+        text_edit2.setFixedWidth(70)
         text_edit2.setAlignment(Qt.AlignRight)
-        text_edit2.setInputMask("0000.000")
-        text_edit2.setText(str(round(end, 3)))
+        text_edit2.setText("{:.3f}".format(end))
         text_edit2.cursorPositionChanged.connect(self._tR_select)
+        text_edit2.keyPressEvent = self._tR_keyPress_Up_Or_Down
         text_edit3 = SubLineEdit(
             self.on_backspace_at_start,
             self.on_enter_in_middle,
@@ -488,6 +488,79 @@ class CutRange(QMainWindow):
         self.scroll_grid_layout.addWidget(text_edit1, i, 2)
         self.scroll_grid_layout.addWidget(text_edit2, i, 3)
         self.scroll_grid_layout.addWidget(text_edit3, i, 4)
+
+    def _tL_keyPress_Up_Or_Down(self, event):
+        widget = self.focusWidget()
+        cursor = widget.cursorPosition()
+        text = widget.text()
+        nm = len(text)
+        if event.key() == Qt.Key_Up:
+            n = text.find(".") - cursor + 1
+            if n > 0:
+                n = n - 1
+            text = "{:.3f}".format(float(text) + 10**n)
+            widget.setText(text)
+            widget.setSelection(cursor-1, 1)
+        elif event.key() == Qt.Key_Down:
+            n = text.find(".") - cursor + 1
+            if n > 0:
+                n = n - 1
+            text = "{:.3f}".format(float(text) - 10**n)
+            widget.setText(text)
+            widget.setSelection(cursor-1, 1)
+        elif event.key() in [Qt.Key_Left, Qt.Key_Right]:
+            if event.key() == Qt.Key_Left:
+                cursor -= 1
+                last_text = text[cursor-1:cursor]
+                if last_text == ".":
+                    cursor -= 1
+                if cursor < 1:
+                    cursor = 1
+            else:
+                cursor += 1
+                last_text = text[cursor-1:cursor]
+                if last_text == ".":
+                    cursor += 1
+                if cursor > nm:
+                    cursor = nm
+            widget.setSelection(cursor-1, 1)
+
+    def _tR_keyPress_Up_Or_Down(self, event):
+        widget = self.focusWidget()
+        cursor = widget.cursorPosition()
+        text = widget.text()
+        nm = len(text)
+        if event.key() == Qt.Key_Up:
+            n = text.find(".") - cursor + 1
+            if n > 0:
+                n = n - 1
+            text = "{:.3f}".format(float(text) + 10**n)
+            widget.setText(text)
+            widget.setSelection(cursor-1, 1)
+        elif event.key() == Qt.Key_Down:
+            n = text.find(".") - cursor + 1
+            if n > 0:
+                n = n - 1
+            text = "{:.3f}".format(float(text) - 10**n)
+            widget.setText(text)
+            widget.setSelection(cursor-1, 1)
+        elif event.key() in [Qt.Key_Left, Qt.Key_Right]:
+            cursor = widget.cursorPosition()
+            if event.key() == Qt.Key_Left:
+                cursor -= 1
+                last_text = text[cursor-1:cursor]
+                if last_text == ".":
+                    cursor -= 1
+                if cursor < 1:
+                    cursor = 1
+            else:
+                cursor += 1
+                last_text = text[cursor-1:cursor]
+                if last_text == ".":
+                    cursor += 1
+                if cursor > nm:
+                    cursor = nm
+            widget.setSelection(cursor-1, 1)
 
     def on_backspace_at_start(self, sender_widget):
         tR = self.tR
@@ -675,8 +748,10 @@ class CutRange(QMainWindow):
         radiobutton1 = self.create_radio_button("Speech", buttongroup, typestr)
         radiobutton2 = self.create_radio_button("Noise", buttongroup)
 
-        line_edit0 = self.create_line_edit(str(start), 80)
-        line_edit1 = self.create_line_edit(str(end), 80)
+        line_edit0 = self.create_line_edit(str(start), 70)
+        line_edit1 = self.create_line_edit(str(end), 70)
+        line_edit0.keyPressEvent = self._tR_keyPress_Up_Or_Down
+        line_edit1.keyPressEvent = self._tR_keyPress_Up_Or_Down
 
         tL_dcs_btn = self.create_button(
             "-1", 25, 25, self._decrease_text_and_play_tL_by_key
@@ -751,7 +826,7 @@ class CutRange(QMainWindow):
     def update_position_and_marked_LineEdit(self, index, pre_end, nex_sta):
         self.tL = pre_end
         self.tR = nex_sta
-        self.media_player.setPosition(int(round(pre_end * 1000, 2)))
+        self.media_player.setPosition(int(round(pre_end * 1000, 3)))
         self._change_marked_LineEdit(index, 5)
 
     def _increase_text_and_play_tL_by_key(self):
@@ -781,17 +856,17 @@ class CutRange(QMainWindow):
 
     def _update_tL(self, i, increment):
         self.mode0.setChecked(True)
-        tL = round(float(self.get_data_widget(i, 5).text()) + increment, 2)
-        tR = round(float(self.get_data_widget(i, 8).text()), 2)
+        tL = round(float(self.get_data_widget(i, 5).text()) + increment, 3)
+        tR = round(float(self.get_data_widget(i, 8).text()), 3)
         if tL > tR - 0.01:
             print("数值太大")
-        elif i > 2 and tL < round(float(self.get_data_widget(i - 2, 8).text()) + 0.01, 2):
+        elif i > 2 and tL < round(float(self.get_data_widget(i - 2, 8).text()) + 0.01, 3):
             print("数值太小")
         else:
             self.get_data_widget(i, 5).setText(str(tL))
             self.tL = tL
             self.tR = tR
-            self.media_player.setPosition(int(round(self.tL * 1000, 2)))
+            self.media_player.setPosition(int(round(self.tL * 1000, 3)))
             self._change_marked_LineEdit(i, 5)
             if self.media_player.state() != QMediaPlayer.PlayingState:
                 print("检测到暂停，马上播放")
@@ -800,11 +875,11 @@ class CutRange(QMainWindow):
 
     def _update_tR(self, i, increment):
         self.mode0.setChecked(True)
-        tL = round(float(self.get_data_widget(i, 5).text()), 2)
-        tR = round(float(self.get_data_widget(i, 8).text()), 2) + increment
+        tL = round(float(self.get_data_widget(i, 5).text()), 3)
+        tR = round(float(self.get_data_widget(i, 8).text()), 3) + increment
         if tR < tL + 0.01:
             print("数值太小")
-        elif i < self.max_idx-1 and (tR > round(float(self.get_data_widget(i + 2, 5).text()), 2) - 0.01):
+        elif i < self.max_idx-1 and (tR > round(float(self.get_data_widget(i + 2, 5).text()), 3) - 0.01):
             print("数值太大")
         else:
             tR = min(self.duration, tR)
@@ -812,7 +887,7 @@ class CutRange(QMainWindow):
             self.tL = tL
             self.tR = tR
             self.media_player.setPosition(
-                int(round(max(self.tR - 3, self.tL) * 1000, 2))
+                int(round(max(self.tR - 3, self.tL) * 1000, 3))
             )
             self._change_marked_LineEdit(i, 8)
             if self.media_player.state() != QMediaPlayer.PlayingState:
@@ -839,8 +914,8 @@ class CutRange(QMainWindow):
                     self.idx_play_now = i
                     self.media_player.pause()
                     # Change play position and play range
-                    self.tL = round(float(self.get_data_widget(i, 5).text()), 2)
-                    self.tR = round(float(self.get_data_widget(i, 8).text()), 2)
+                    self.tL = round(float(self.get_data_widget(i, 5).text()), 3)
+                    self.tR = round(float(self.get_data_widget(i, 8).text()), 3)
                     self.media_player.setPosition(int(round(self.tL * 1000)))
                     self.media_player.play()
                     self.play_button.setText("STOP")
@@ -870,10 +945,10 @@ class CutRange(QMainWindow):
                     self.idx_play_now = i
                     self.media_player.pause()
                     # Change Play position and play range
-                    self.tL = round(float(self.get_data_widget(i, 5).text()), 2)
-                    self.tR = round(float(self.get_data_widget(i, 8).text()), 2)
+                    self.tL = round(float(self.get_data_widget(i, 5).text()), 3)
+                    self.tR = round(float(self.get_data_widget(i, 8).text()), 3)
                     self.media_player.setPosition(
-                        int(round(max(self.tR - 3, self.tL) * 1000, 2))
+                        int(round(max(self.tR - 3, self.tL) * 1000, 3))
                     )
                     # Change color
                     self._change_marked_LineEdit(i, 8)
@@ -942,8 +1017,8 @@ class CutRange(QMainWindow):
         for i in range(self.idx_play_now + 2, self.max_idx, 2):
             if self.get_data_widget(i, 3).isChecked():
                 continue
-            tmp_tL = round(float(self.get_data_widget(i, 5).text()), 2)
-            tmp_tR = round(float(self.get_data_widget(i, 8).text()), 2)
+            tmp_tL = round(float(self.get_data_widget(i, 5).text()), 3)
+            tmp_tR = round(float(self.get_data_widget(i, 8).text()), 3)
             self._change_marked_LineEdit(i, 5)
             self._pause_and_set_position(int(round(tmp_tL * 1000)))
             self.tL = tmp_tL
@@ -1024,7 +1099,7 @@ class CutRange(QMainWindow):
             )
             return None
         _, file_list = get_all_files_with_extensions(
-            self.root, [".csv", ".mkv", ".wav"]
+            self.root, [".csv", ".wav", "mp4"]
         )
         for file in file_list:
             if file.endswith("CutRange.csv"):
