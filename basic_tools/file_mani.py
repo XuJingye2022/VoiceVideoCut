@@ -42,8 +42,3 @@ def change_file_extension(s: str, new_ext: str):
         return name + new_ext
     else:
         return name + "." + new_ext
-
-
-def add_suffix_to_filename(s: str, suffix: str):
-    fname, ext = os.path.splitext(s)
-    return fname + suffix + ext
