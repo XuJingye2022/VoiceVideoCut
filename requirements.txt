@@ -10,3 +10,6 @@ opencc
 multipledispatch
 opencv-python
 srt
+pillow
+ffmpeg-python
+pyarrow
