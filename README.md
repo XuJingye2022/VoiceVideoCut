@@ -12,8 +12,8 @@
 
 ## 使用方法
 1. 下载整个程序.
-2. 在`requirements.txt`同一级目录下, 用`pip3 install -r requirements.txt`安装依赖。
-3. 有GPU的，自己根据自己CUDA版本，自行安装PyTorch。没有GPU的也没关系，只是无法使用语音识别功能。
+2. 有GPU的，自己根据自己CUDA版本，自行安装PyTorch。没有GPU的也没关系，只是无法使用语音识别功能，根据音量来划分片段还是可以的。先执行这一步，可以避免第三步安装`whisper`时，安装CPU版本的PyTorch。
+3. 在`requirements.txt`同一级目录下, 用`pip3 install -r requirements.txt`安装依赖。
 4. 安装[K-Lite Codec Pack](http://www.codecguide.com/download_k-lite_codec_pack_standard.htm).
 5. 安装[OBS](https://obsproject.com/download).
 6. 安装ffmpeg，并在环境变量中添加`ffmpeg`的路径.
@@ -42,7 +42,8 @@
 
 ## TODO
 - [ ] 秒数尝试更改为时间码`xx:xx:xx:xx`，`Hours:Minutes:Seconds:Frames`
-- [ ] 尝试QLineEdit通过方向键上下键调整时间。
+- [x] 尝试QLineEdit通过方向键上下键调整时间。
+- [ ] 尝试在编辑字幕同时，完成剪辑的操作。
 
 
 ## 文件结构说明
