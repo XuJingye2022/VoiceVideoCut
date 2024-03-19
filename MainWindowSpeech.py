@@ -73,6 +73,7 @@ SPEECH_CHANNEL = SETTINGS["Gam"]["speech_channel"]
 PRE_T = SETTINGS["Gam"]["pre_time"]
 AFT_T = SETTINGS["Gam"]["aft_time"]
 BET_T = SETTINGS["Gam"]["bet_time"]
+GAME_FOLDER = SETTINGS["Gam"]["default_game_folder"]
 
 
 class QSSLoader:
@@ -88,10 +89,10 @@ class QSSLoader:
 class CutRange(QMainWindow):
     def __init__(self):
         # ========== 参数 ============
-        self.window_title = "Adjust Cut Range"
-        self.video_w = 1200
+        self.window_title = "Adjust Cut Range"      # Windows Titile
+        self.video_w = 1200                         # Size of video player area
         self.video_h = 675
-        self.scroll_area_w = 530
+        self.scroll_area_w = 530                    # Width of time edit area.
         self.slider_h = 15
         self.button_w = int(floor(self.video_w - 80) / 7)
         self.button_h = 30
@@ -320,7 +321,7 @@ class CutRange(QMainWindow):
         line_edit.setFixedWidth(width)
         return line_edit
 
-    def create_button(self, text, width, height, clicked_func):
+    def time_control_button(self, text, width, height, clicked_func):
         button = QPushButton(text, self)
         button.setFixedSize(width, height)
         button.clicked.connect(clicked_func)
@@ -355,6 +356,7 @@ class CutRange(QMainWindow):
         # self._play_pause_video(None)
 
         file_dialog = QFileDialog(self)
+        file_dialog.setDirectory(GAME_FOLDER)
         file_dialog.setFileMode(QFileDialog.FileMode.ExistingFile)
         file_dialog.setNameFilter("Video files (*.mp4)")
         if file_dialog.exec():
@@ -470,13 +472,13 @@ class CutRange(QMainWindow):
         text_edit1.setAlignment(Qt.AlignRight)
         text_edit1.setText("{:.3f}".format(start))
         text_edit1.cursorPositionChanged.connect(self._tL_select)
-        text_edit1.keyPressEvent = self._tL_keyPress_Up_Or_Down
+        text_edit1.keyPressEvent = self._tL_keyPressEvent
         text_edit2 = QLineEdit()
         text_edit2.setFixedWidth(70)
         text_edit2.setAlignment(Qt.AlignRight)
         text_edit2.setText("{:.3f}".format(end))
         text_edit2.cursorPositionChanged.connect(self._tR_select)
-        text_edit2.keyPressEvent = self._tR_keyPress_Up_Or_Down
+        text_edit2.keyPressEvent = self._tR_keyPressEvent
         text_edit3 = SubLineEdit(
             self.on_backspace_at_start,
             self.on_enter_in_middle,
@@ -489,63 +491,32 @@ class CutRange(QMainWindow):
         self.scroll_grid_layout.addWidget(text_edit2, i, 3)
         self.scroll_grid_layout.addWidget(text_edit3, i, 4)
 
-    def _tL_keyPress_Up_Or_Down(self, event):
-        widget = self.focusWidget()
-        cursor = widget.cursorPosition()
-        text = widget.text()
-        nm = len(text)
-        if event.key() == Qt.Key_Up:
-            n = text.find(".") - cursor + 1
-            if n > 0:
-                n = n - 1
-            text = "{:.3f}".format(float(text) + 10**n)
-            widget.setText(text)
-            widget.setSelection(cursor-1, 1)
-        elif event.key() == Qt.Key_Down:
-            n = text.find(".") - cursor + 1
-            if n > 0:
-                n = n - 1
-            text = "{:.3f}".format(float(text) - 10**n)
-            widget.setText(text)
-            widget.setSelection(cursor-1, 1)
-        elif event.key() in [Qt.Key_Left, Qt.Key_Right]:
-            if event.key() == Qt.Key_Left:
-                cursor -= 1
-                last_text = text[cursor-1:cursor]
-                if last_text == ".":
-                    cursor -= 1
-                if cursor < 1:
-                    cursor = 1
-            else:
-                cursor += 1
-                last_text = text[cursor-1:cursor]
-                if last_text == ".":
-                    cursor += 1
-                if cursor > nm:
-                    cursor = nm
-            widget.setSelection(cursor-1, 1)
+    def _tL_keyPressEvent(self, event):
+        if event.key() in [Qt.Key_Up, Qt.Key_Down, Qt.Key_Left, Qt.Key_Right]:
+            self._t_keyPressEvent_DirectionKeys(event)
 
-    def _tR_keyPress_Up_Or_Down(self, event):
+    def _tR_keyPressEvent(self, event):
+        if event.key() in [Qt.Key_Up, Qt.Key_Down, Qt.Key_Left, Qt.Key_Right]:
+            self._t_keyPressEvent_DirectionKeys(event)
+
+    def _t_keyPressEvent_DirectionKeys(self, event):
         widget = self.focusWidget()
         cursor = widget.cursorPosition()
         text = widget.text()
         nm = len(text)
-        if event.key() == Qt.Key_Up:
+        # 如果按上下键
+        if event.key() in [Qt.Key_Up, Qt.Key_Down]:
             n = text.find(".") - cursor + 1
             if n > 0:
                 n = n - 1
-            text = "{:.3f}".format(float(text) + 10**n)
+            if event.key() == Qt.Key_Up:
+                text = "{:.3f}".format(float(text) + 10**n)
+            else:
+                text = "{:.3f}".format(float(text) - 10**n)
             widget.setText(text)
             widget.setSelection(cursor-1, 1)
-        elif event.key() == Qt.Key_Down:
-            n = text.find(".") - cursor + 1
-            if n > 0:
-                n = n - 1
-            text = "{:.3f}".format(float(text) - 10**n)
-            widget.setText(text)
-            widget.setSelection(cursor-1, 1)
+        # 如果按左右方向键
         elif event.key() in [Qt.Key_Left, Qt.Key_Right]:
-            cursor = widget.cursorPosition()
             if event.key() == Qt.Key_Left:
                 cursor -= 1
                 last_text = text[cursor-1:cursor]
@@ -750,19 +721,19 @@ class CutRange(QMainWindow):
 
         line_edit0 = self.create_line_edit(str(start), 70)
         line_edit1 = self.create_line_edit(str(end), 70)
-        line_edit0.keyPressEvent = self._tR_keyPress_Up_Or_Down
-        line_edit1.keyPressEvent = self._tR_keyPress_Up_Or_Down
+        line_edit0.keyPressEvent = self._tR_keyPressEvent
+        line_edit1.keyPressEvent = self._tR_keyPressEvent
 
-        tL_dcs_btn = self.create_button(
+        tL_dcs_btn = self.time_control_button(
             "-1", 25, 25, self._decrease_text_and_play_tL_by_key
         )
-        tL_ics_btn = self.create_button(
+        tL_ics_btn = self.time_control_button(
             "+1", 25, 25, self._increase_text_and_play_tL_by_key
         )
-        tR_dcs_btn = self.create_button(
+        tR_dcs_btn = self.time_control_button(
             "-1", 25, 25, self._decrease_text_and_play_tR_by_key
         )
-        tR_ics_btn = self.create_button(
+        tR_ics_btn = self.time_control_button(
             "+1", 25, 25, self._increase_text_and_play_tR_by_key
         )
 
